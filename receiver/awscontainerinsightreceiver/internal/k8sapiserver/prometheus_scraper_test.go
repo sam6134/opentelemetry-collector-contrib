@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awscontainerinsightreceiver/internal/mocks"
 	configutil "github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/config"
@@ -177,18 +178,18 @@ func TestNewPrometheusScraperEndToEnd(t *testing.T) {
 	// build up a new PR
 	promFactory := prometheusreceiver.NewFactory()
 
-	targets := []*testData{
+	targets := []*mocks.TestData{
 		{
-			name: "prometheus",
-			pages: []mockPrometheusResponse{
-				{code: 200, data: renameMetric},
+			Name: "prometheus",
+			Pages: []mocks.MockPrometheusResponse{
+				{Code: 200, Data: renameMetric},
 			},
 		},
 	}
-	mp, cfg, err := setupMockPrometheus(targets...)
+	mp, cfg, err := mocks.SetupMockPrometheus(targets...)
 	assert.NoError(t, err)
 
-	split := strings.Split(mp.srv.URL, "http://")
+	split := strings.Split(mp.Srv.URL, "http://")
 
 	scrapeConfig := &config.ScrapeConfig{
 		HTTPClientConfig: configutil.HTTPClientConfig{
@@ -261,8 +262,8 @@ func TestNewPrometheusScraperEndToEnd(t *testing.T) {
 	})
 
 	// wait for 2 scrapes, one initiated by us, another by the new scraper process
-	mp.wg.Wait()
-	mp.wg.Wait()
+	mp.Wg.Wait()
+	mp.Wg.Wait()
 
 	assert.True(t, *consumer.up)
 	assert.True(t, *consumer.httpConnected)

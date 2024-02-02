@@ -8,6 +8,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awscontainerinsightreceiver/internal/gpu"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/consumer"
 	"go.opentelemetry.io/collector/pdata/pmetric"
@@ -40,6 +41,7 @@ type awsContainerInsightReceiver struct {
 	cadvisor          metricsProvider
 	k8sapiserver      metricsProvider
 	prometheusScraper *k8sapiserver.PrometheusScraper
+	dcgmScraper       *gpu.DcgmScraper
 }
 
 // newAWSContainerInsightReceiver creates the aws container insight receiver with the given parameters.
@@ -94,6 +96,11 @@ func (acir *awsContainerInsightReceiver) Start(ctx context.Context, host compone
 		err = acir.startPrometheusScraper(ctx, host, hostinfo, leaderElection)
 		if err != nil {
 			acir.settings.Logger.Debug("Unable to start kube apiserver prometheus scraper", zap.Error(err))
+		}
+
+		err = acir.startDcgmScraper(ctx, host, hostinfo)
+		if err != nil {
+			acir.settings.Logger.Debug("Unable to start dcgm scraper", zap.Error(err))
 		}
 	}
 	if acir.config.ContainerOrchestrator == ci.ECS {
@@ -169,6 +176,30 @@ func (acir *awsContainerInsightReceiver) startPrometheusScraper(ctx context.Cont
 	})
 	return err
 }
+func (acir *awsContainerInsightReceiver) startDcgmScraper(ctx context.Context, host component.Host, hostinfo *hostInfo.Info) error {
+	if !acir.config.EnableGpuMetric {
+		return nil
+	}
+
+	restConfig, err := rest.InClusterConfig()
+	if err != nil {
+		return err
+	}
+	bearerToken := restConfig.BearerToken
+	if bearerToken == "" {
+		return errors.New("bearer token was empty")
+	}
+
+	acir.dcgmScraper, err = gpu.NewDcgmScraper(gpu.DcgmScraperOpts{
+		Ctx:               ctx,
+		TelemetrySettings: acir.settings,
+		Consumer:          acir.nextConsumer,
+		Host:              host,
+		HostInfoProvider:  hostinfo,
+		BearerToken:       bearerToken,
+	})
+	return err
+}
 
 // Shutdown stops the awsContainerInsightReceiver receiver.
 func (acir *awsContainerInsightReceiver) Shutdown(context.Context) error {
@@ -188,6 +219,10 @@ func (acir *awsContainerInsightReceiver) Shutdown(context.Context) error {
 	}
 	if acir.cadvisor != nil {
 		errs = errors.Join(errs, acir.cadvisor.Shutdown())
+	}
+
+	if acir.dcgmScraper != nil {
+		acir.dcgmScraper.Shutdown()
 	}
 
 	return errs
@@ -214,6 +249,10 @@ func (acir *awsContainerInsightReceiver) collectData(ctx context.Context) error 
 	if acir.prometheusScraper != nil {
 		// this does not return any metrics, it just indirectly ensures scraping is running on a leader
 		acir.prometheusScraper.GetMetrics() //nolint:errcheck
+	}
+
+	if acir.dcgmScraper != nil {
+		acir.dcgmScraper.GetMetrics() //nolint:errcheck
 	}
 
 	for _, md := range mds {
