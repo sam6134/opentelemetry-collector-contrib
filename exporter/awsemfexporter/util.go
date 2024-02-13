@@ -172,3 +172,20 @@ func attrMaptoStringMap(attrMap pcommon.Map) map[string]string {
 	})
 	return strMap
 }
+
+func filterDims(dims [][]string, keep string) [][]string {
+	var filtered [][]string
+	for _, dimGrp := range dims {
+		contains := false
+		for _, dim := range dimGrp {
+			if dim == keep {
+				contains = true
+				break
+			}
+		}
+		if contains {
+			filtered = append(filtered, dimGrp)
+		}
+	}
+	return filtered
+}

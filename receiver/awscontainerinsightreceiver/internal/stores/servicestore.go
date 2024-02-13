@@ -82,3 +82,7 @@ func addServiceNameTag(metric CIMetric, serviceNames []string) {
 	// TODO handle serviceNames len is larger than 1. We need to duplicate the metric object
 	metric.AddTag(ci.TypeService, serviceNames[0])
 }
+
+func (s *ServiceStore) Shutdown() error {
+	return nil
+}

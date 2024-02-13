@@ -280,6 +280,8 @@ func TestTranslateOtToGroupedMetric(t *testing.T) {
 	// need to have 1 more metric than the default because the first is not going to be retained because it is a delta metric
 	containerInsightMetric := createTestResourceMetricsHelper(defaultNumberOfTestMetrics + 1)
 	containerInsightMetric.Resource().Attributes().PutStr(conventions.AttributeServiceName, "containerInsightsKubeAPIServerScraper")
+	gpuMetric := createTestResourceMetricsHelper(defaultNumberOfTestMetrics + 1)
+	gpuMetric.Resource().Attributes().PutStr(conventions.AttributeServiceName, "containerInsightsDCGMExporterScraper")
 
 	counterSumMetrics := map[string]*metricInfo{
 		"spanCounter": {
@@ -372,6 +374,20 @@ func TestTranslateOtToGroupedMetric(t *testing.T) {
 				"spanName":            "testSpan",
 			},
 			"myServiceNS/containerInsightsKubeAPIServerScraper",
+			containerInsightsReceiver,
+		},
+		{
+			"dcgm receiver",
+			gpuMetric,
+			map[string]string{
+				"isItAnError": "false",
+				"spanName":    "testSpan",
+			},
+			map[string]string{
+				(oTellibDimensionKey): "cloudwatch-lib",
+				"spanName":            "testSpan",
+			},
+			"myServiceNS/containerInsightsDCGMExporterScraper",
 			containerInsightsReceiver,
 		},
 	}
@@ -618,6 +634,7 @@ func TestTranslateGroupedMetricToCWMetric(t *testing.T) {
 		groupedMetric           *groupedMetric
 		metricDeclarations      []*MetricDeclaration
 		disableMetricExtraction bool
+		enableGpuMetrics        bool
 		expectedCWMetric        *cWMetrics
 	}{
 		{
@@ -640,6 +657,7 @@ func TestTranslateGroupedMetricToCWMetric(t *testing.T) {
 				},
 			},
 			nil,
+			false,
 			false,
 			&cWMetrics{
 				measurements: []cWMeasurement{
@@ -686,6 +704,7 @@ func TestTranslateGroupedMetricToCWMetric(t *testing.T) {
 					MetricNameSelectors: []string{"metric.*"},
 				},
 			},
+			false,
 			false,
 			&cWMetrics{
 				measurements: []cWMeasurement{
@@ -736,6 +755,7 @@ func TestTranslateGroupedMetricToCWMetric(t *testing.T) {
 				},
 			},
 			nil,
+			false,
 			false,
 			&cWMetrics{
 				measurements: []cWMeasurement{
@@ -813,6 +833,7 @@ func TestTranslateGroupedMetricToCWMetric(t *testing.T) {
 				},
 			},
 			false,
+			false,
 			&cWMetrics{
 				measurements: []cWMeasurement{
 					{
@@ -862,6 +883,7 @@ func TestTranslateGroupedMetricToCWMetric(t *testing.T) {
 			},
 			nil,
 			false,
+			false,
 			&cWMetrics{
 				measurements: []cWMeasurement{
 					{
@@ -898,6 +920,7 @@ func TestTranslateGroupedMetricToCWMetric(t *testing.T) {
 				},
 			},
 			nil,
+			false,
 			false,
 			&cWMetrics{
 				measurements: []cWMeasurement{
@@ -941,12 +964,124 @@ func TestTranslateGroupedMetricToCWMetric(t *testing.T) {
 			},
 			nil,
 			true,
+			false,
 			&cWMetrics{
 				measurements: []cWMeasurement{},
 				timestampMs:  timestamp,
 				fields: map[string]any{
 					"label1":  "value1",
 					"metric1": 1,
+				},
+			},
+		},
+		{
+			"nvidia gpu metrics",
+			&groupedMetric{
+				labels: map[string]string{
+					"label1": "value1",
+					"Type":   "Pod",
+				},
+				metrics: map[string]*metricInfo{
+					"metric1": {
+						value: 1,
+						unit:  "Count",
+					},
+				},
+				metadata: cWMetricMetadata{
+					groupedMetricMetadata: groupedMetricMetadata{
+						namespace:      namespace,
+						timestampMs:    timestamp,
+						metricDataType: pmetric.MetricTypeGauge,
+					},
+					receiver: prometheusReceiver,
+				},
+			},
+			[]*MetricDeclaration{
+				{
+					Dimensions: [][]string{
+						{"label1"},
+						{"label1", "Type"},
+					},
+					MetricNameSelectors: []string{"metric1"},
+				},
+			},
+			false,
+			true,
+			&cWMetrics{
+				measurements: []cWMeasurement{
+					{
+						Namespace:  namespace,
+						Dimensions: [][]string{{"label1"}, {"label1", "Type"}},
+						Metrics: []map[string]string{
+							{
+								"Name": "metric1",
+								"Unit": "Count",
+							},
+						},
+					},
+				},
+				timestampMs: timestamp,
+				fields: map[string]any{
+					"label1":                  "value1",
+					"metric1":                 1,
+					fieldPrometheusMetricType: "gauge",
+					"Type":                    "Pod",
+				},
+			},
+		},
+		{
+			"nvidia gpu metrics w/ GpuDevice",
+			&groupedMetric{
+				labels: map[string]string{
+					"label1":                "value1",
+					"Type":                  "PodGPU",
+					gpuInstanceDimensionKey: "device0",
+				},
+				metrics: map[string]*metricInfo{
+					"metric1": {
+						value: 1,
+						unit:  "Count",
+					},
+				},
+				metadata: cWMetricMetadata{
+					groupedMetricMetadata: groupedMetricMetadata{
+						namespace:      namespace,
+						timestampMs:    timestamp,
+						metricDataType: pmetric.MetricTypeGauge,
+					},
+					receiver: prometheusReceiver,
+				},
+			},
+			[]*MetricDeclaration{
+				{
+					Dimensions: [][]string{
+						{"label1", "Type", gpuInstanceDimensionKey},
+					},
+					MetricNameSelectors: []string{"metric1"},
+				},
+			},
+			false,
+			true,
+			&cWMetrics{
+				measurements: []cWMeasurement{
+					{
+						Namespace:  namespace,
+						Dimensions: [][]string{{"label1", "Type", gpuInstanceDimensionKey}},
+						Metrics: []map[string]string{
+							{
+								"Name": "metric1",
+								"Unit": "Count",
+							},
+						},
+					},
+				},
+				timestampMs: timestamp,
+				fields: map[string]any{
+					"label1":                  "value1",
+					"metric1":                 1,
+					fieldPrometheusMetricType: "gauge",
+					"Type":                    "PodGPU",
+					gpuInstanceDimensionKey:   "device0",
 				},
 			},
 		},
@@ -960,6 +1095,7 @@ func TestTranslateGroupedMetricToCWMetric(t *testing.T) {
 				MetricDeclarations:      tc.metricDeclarations,
 				DimensionRollupOption:   "",
 				DisableMetricExtraction: tc.disableMetricExtraction,
+				EnableGpuMetric:         tc.enableGpuMetrics,
 				logger:                  logger,
 			}
 			for _, decl := range tc.metricDeclarations {
@@ -968,6 +1104,9 @@ func TestTranslateGroupedMetricToCWMetric(t *testing.T) {
 			}
 			cWMetric := translateGroupedMetricToCWMetric(tc.groupedMetric, config)
 			assert.NotNil(t, cWMetric)
+			fmt.Println("=============================")
+			fmt.Println(fmt.Sprintf("%+v", cWMetric))
+			fmt.Println("=============================")
 			assertCWMetricsEqual(t, tc.expectedCWMetric, cWMetric)
 		})
 	}

@@ -32,6 +32,7 @@ const (
 	containerInsightsReceiver = "awscontainerinsight"
 	attributeReceiver         = "receiver"
 	fieldPrometheusMetricType = "prom_metric_type"
+	gpuInstanceDimensionKey   = "GpuDevice"
 )
 
 var errMissingMetricsForEnhancedContainerInsights = errors.New("nil event detected with EnhancedContainerInsights enabled")
@@ -131,7 +132,8 @@ func (mt metricTranslator) translateOTelToGroupedMetric(rm pmetric.ResourceMetri
 	}
 
 	if serviceName, ok := rm.Resource().Attributes().Get("service.name"); ok {
-		if strings.HasPrefix(serviceName.Str(), "containerInsightsKubeAPIServerScraper") {
+		if strings.HasPrefix(serviceName.Str(), "containerInsightsKubeAPIServerScraper") ||
+			strings.HasPrefix(serviceName.Str(), "containerInsightsDCGMExporterScraper") {
 			// the prometheus metrics that come from the container insight receiver need to be clearly tagged as coming from container insights
 			metricReceiver = containerInsightsReceiver
 		}
@@ -201,6 +203,13 @@ func translateGroupedMetricToCWMetric(groupedMetric *groupedMetric, config *Conf
 			// If metric declarations are defined, filter grouped metric's metrics using
 			// metric declarations and translate into the corresponding list of CW Measurements
 			cWMeasurements = groupedMetricToCWMeasurementsWithFilters(groupedMetric, config)
+		}
+	}
+
+	// filter out other dimension sets to avoid double count of the same metric
+	if _, ok := fields[gpuInstanceDimensionKey]; ok {
+		for i := 0; i < len(cWMeasurements); i++ {
+			cWMeasurements[i].Dimensions = filterDims(cWMeasurements[i].Dimensions, gpuInstanceDimensionKey)
 		}
 	}
 
