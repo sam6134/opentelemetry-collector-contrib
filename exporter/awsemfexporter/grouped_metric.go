@@ -5,7 +5,6 @@ package awsemfexporter // import "github.com/open-telemetry/opentelemetry-collec
 
 import (
 	"encoding/json"
-	"fmt"
 	"strings"
 
 	"go.opentelemetry.io/collector/pdata/pmetric"
@@ -79,50 +78,30 @@ func addToGroupedMetric(pmd pmetric.Metric, groupedMetrics map[any]*groupedMetri
 				metadata.timestampMs = dp.timestampMs
 			}
 
-			if _, ok := labels["GpuDevice"]; ok {
-				// add the same metric without GpuDevice label to apply different metric types
-				newLabels := map[string]string{}
-				for k, v := range labels {
-					if k == "GpuDevice" {
-						continue
-					}
-					newLabels[k] = v
+			// Extra params to use when grouping metrics
+			groupKey := aws.NewKey(metadata.groupedMetricMetadata, labels)
+			if _, ok := groupedMetrics[groupKey]; ok {
+				// if MetricName already exists in metrics map, print warning log
+				if _, ok := groupedMetrics[groupKey].metrics[dp.name]; ok {
+					logger.Warn(
+						"Duplicate metric found",
+						zap.String("Name", dp.name),
+						zap.Any("Labels", labels),
+					)
+				} else {
+					groupedMetrics[groupKey].metrics[dp.name] = metric
 				}
-				add(groupedMetrics, dp.name, metric, metadata, newLabels, logger)
-
-				// update metric type to (Container|Pod|Node)GPU
-				if v, ok := labels["Type"]; ok && (v == "Container" || v == "Pod" || v == "Node") {
-					v = fmt.Sprintf("%sGPU", v)
-					labels["Type"] = v
+			} else {
+				groupedMetrics[groupKey] = &groupedMetric{
+					labels:   labels,
+					metrics:  map[string]*metricInfo{(dp.name): metric},
+					metadata: metadata,
 				}
 			}
-			add(groupedMetrics, dp.name, metric, metadata, labels, logger)
 		}
 
 	}
 	return nil
-}
-
-func add(groupedMetrics map[any]*groupedMetric, dpname string, metric *metricInfo, metadata cWMetricMetadata, labels map[string]string, logger *zap.Logger) {
-	groupKey := aws.NewKey(metadata.groupedMetricMetadata, labels)
-	if _, ok := groupedMetrics[groupKey]; ok {
-		// if MetricName already exists in metrics map, print warning log
-		if _, ok := groupedMetrics[groupKey].metrics[dpname]; ok {
-			logger.Warn(
-				"Duplicate metric found",
-				zap.String("Name", dpname),
-				zap.Any("Labels", labels),
-			)
-		} else {
-			groupedMetrics[groupKey].metrics[dpname] = metric
-		}
-	} else {
-		groupedMetrics[groupKey] = &groupedMetric{
-			labels:   labels,
-			metrics:  map[string]*metricInfo{(dpname): metric},
-			metadata: metadata,
-		}
-	}
 }
 
 type kubernetesObj struct {

@@ -206,13 +206,6 @@ func translateGroupedMetricToCWMetric(groupedMetric *groupedMetric, config *Conf
 		}
 	}
 
-	// filter out other dimension sets to avoid double count of the same metric
-	if _, ok := fields[gpuInstanceDimensionKey]; ok {
-		for i := 0; i < len(cWMeasurements); i++ {
-			cWMeasurements[i].Dimensions = filterDims(cWMeasurements[i].Dimensions, gpuInstanceDimensionKey)
-		}
-	}
-
 	return &cWMetrics{
 		measurements: cWMeasurements,
 		timestampMs:  groupedMetric.metadata.timestampMs,
