@@ -86,14 +86,12 @@ func NewDcgmScraper(opts DcgmScraperOpts) (*DcgmScraper, error) {
 		MetricsPath:    "/metrics",
 		ServiceDiscoveryConfigs: discovery.Configs{
 			&kubernetes.SDConfig{
-				//Role: kubernetes.RoleEndpoint,
 				Role: kubernetes.RoleService,
 				NamespaceDiscovery: kubernetes.NamespaceDiscovery{
 					IncludeOwnNamespace: true,
 				},
 				Selectors: []kubernetes.SelectorConfig{
 					{
-						//Role:  kubernetes.RoleEndpoint,
 						Role:  kubernetes.RoleService,
 						Label: "k8s-app=dcgm-exporter-service",
 					},

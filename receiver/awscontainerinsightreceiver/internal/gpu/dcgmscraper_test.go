@@ -200,37 +200,7 @@ func TestNewDcgmScraperEndToEnd(t *testing.T) {
 				},
 			},
 		},
-		RelabelConfigs: []*relabel.Config{
-			// doesn't seem like there is a good way to unit test relabeling rules https://github.com/prometheus/prometheus/issues/8606
-			//{
-			//	SourceLabels: model.LabelNames{"__address__"},
-			//	Regex:        relabel.MustNewRegexp("([^:]+)(?::\\d+)?"),
-			//	Replacement:  "${1}:9400",
-			//	TargetLabel:  "__address__",
-			//	Action:       relabel.Replace,
-			//},
-			//{
-			//	SourceLabels: model.LabelNames{"__meta_kubernetes_namespace"},
-			//	TargetLabel:  "Namespace",
-			//	Regex:        relabel.MustNewRegexp("(.*)"),
-			//	Replacement:  "$1",
-			//	Action:       relabel.Replace,
-			//},
-			//{
-			//	SourceLabels: model.LabelNames{"__meta_kubernetes_pod_name"},
-			//	TargetLabel:  "pod",
-			//	Regex:        relabel.MustNewRegexp("(.*)"),
-			//	Replacement:  "$1",
-			//	Action:       relabel.Replace,
-			//},
-			//{
-			//	SourceLabels: model.LabelNames{"__meta_kubernetes_pod_node_name"},
-			//	TargetLabel:  "NodeName",
-			//	Regex:        relabel.MustNewRegexp("(.*)"),
-			//	Replacement:  "$1",
-			//	Action:       relabel.Replace,
-			//},
-		},
+		RelabelConfigs: []*relabel.Config{},
 		MetricRelabelConfigs: []*relabel.Config{
 			{
 				SourceLabels: model.LabelNames{"__name__"},

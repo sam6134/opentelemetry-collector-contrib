@@ -993,9 +993,6 @@ func TestTranslateGroupedMetricToCWMetric(t *testing.T) {
 			}
 			cWMetric := translateGroupedMetricToCWMetric(tc.groupedMetric, config)
 			assert.NotNil(t, cWMetric)
-			fmt.Println("=============================")
-			fmt.Println(fmt.Sprintf("%+v", cWMetric))
-			fmt.Println("=============================")
 			assertCWMetricsEqual(t, tc.expectedCWMetric, cWMetric)
 		})
 	}
