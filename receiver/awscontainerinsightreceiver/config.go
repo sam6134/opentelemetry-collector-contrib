@@ -61,4 +61,8 @@ type Config struct {
 	// EnableGpuMetric disables GPU monitoring where metrics are scraped from vendor specific sources
 	// The default value is true meaning GPU metrics get collected out of the box unless it's disabled
 	EnableGpuMetric bool `mapstructure:"gpu_metrics"`
+
+	// EnableNeuronMetric disables Neuron monitoring where metrics are scraped from vendor specific sources
+	// The default value is true meaning Neuron metrics get collected out of the box unless it's disabled
+	EnableNeuronMetric bool `mapstructure:"neuron_metrics"`
 }

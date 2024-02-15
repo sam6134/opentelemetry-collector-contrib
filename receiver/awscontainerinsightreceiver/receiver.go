@@ -9,6 +9,8 @@ import (
 	"time"
 
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awscontainerinsightreceiver/internal/gpu"
+	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awscontainerinsightreceiver/internal/neuron"
+	podinfo "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awscontainerinsightreceiver/internal/pod"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/consumer"
 	"go.opentelemetry.io/collector/pdata/pmetric"
@@ -34,14 +36,15 @@ type metricsProvider interface {
 
 // awsContainerInsightReceiver implements the receiver.Metrics
 type awsContainerInsightReceiver struct {
-	settings          component.TelemetrySettings
-	nextConsumer      consumer.Metrics
-	config            *Config
-	cancel            context.CancelFunc
-	cadvisor          metricsProvider
-	k8sapiserver      metricsProvider
-	prometheusScraper *k8sapiserver.PrometheusScraper
-	dcgmScraper       *gpu.DcgmScraper
+	settings             component.TelemetrySettings
+	nextConsumer         consumer.Metrics
+	config               *Config
+	cancel               context.CancelFunc
+	cadvisor             metricsProvider
+	k8sapiserver         metricsProvider
+	prometheusScraper    *k8sapiserver.PrometheusScraper
+	dcgmScraper          *gpu.DcgmScraper
+	neuronMonitorScraper *neuron.NeuronMonitorScraper
 }
 
 // newAWSContainerInsightReceiver creates the aws container insight receiver with the given parameters.
@@ -66,6 +69,11 @@ func (acir *awsContainerInsightReceiver) Start(ctx context.Context, host compone
 	ctx, acir.cancel = context.WithCancel(ctx)
 
 	hostinfo, err := hostInfo.NewInfo(acir.config.AWSSessionSettings, acir.config.ContainerOrchestrator, acir.config.CollectionInterval, acir.settings.Logger, hostInfo.WithClusterName(acir.config.ClusterName))
+	if err != nil {
+		return err
+	}
+
+	podinfo, err := podinfo.NewInfo()
 	if err != nil {
 		return err
 	}
@@ -99,6 +107,11 @@ func (acir *awsContainerInsightReceiver) Start(ctx context.Context, host compone
 		}
 
 		err = acir.startDcgmScraper(ctx, host, hostinfo)
+		if err != nil {
+			acir.settings.Logger.Debug("Unable to start dcgm scraper", zap.Error(err))
+		}
+
+		err = acir.startNeuronScraper(ctx, host, hostinfo, podinfo)
 		if err != nil {
 			acir.settings.Logger.Debug("Unable to start dcgm scraper", zap.Error(err))
 		}
@@ -201,6 +214,32 @@ func (acir *awsContainerInsightReceiver) startDcgmScraper(ctx context.Context, h
 	return err
 }
 
+func (acir *awsContainerInsightReceiver) startNeuronScraper(ctx context.Context, host component.Host, hostinfo *hostInfo.Info, podinfo *podinfo.Info) error {
+	if !acir.config.EnableNeuronMetric {
+		return nil
+	}
+
+	restConfig, err := rest.InClusterConfig()
+	if err != nil {
+		return err
+	}
+	bearerToken := restConfig.BearerToken
+	if bearerToken == "" {
+		return errors.New("bearer token was empty")
+	}
+
+	acir.neuronMonitorScraper, err = neuron.NewNeuronMonitorScraper(neuron.NeuronMonitorScraperOpts{
+		Ctx:                 ctx,
+		TelemetrySettings:   acir.settings,
+		Consumer:            acir.nextConsumer,
+		Host:                host,
+		HostInfoProvider:    hostinfo,
+		PodNameInfoProvider: podinfo,
+		BearerToken:         bearerToken,
+	})
+	return err
+}
+
 // Shutdown stops the awsContainerInsightReceiver receiver.
 func (acir *awsContainerInsightReceiver) Shutdown(context.Context) error {
 	if acir.prometheusScraper != nil {
@@ -253,6 +292,10 @@ func (acir *awsContainerInsightReceiver) collectData(ctx context.Context) error 
 
 	if acir.dcgmScraper != nil {
 		acir.dcgmScraper.GetMetrics() //nolint:errcheck
+	}
+
+	if acir.neuronMonitorScraper != nil {
+		acir.neuronMonitorScraper.GetMetrics() //nolint:errcheck
 	}
 
 	for _, md := range mds {
