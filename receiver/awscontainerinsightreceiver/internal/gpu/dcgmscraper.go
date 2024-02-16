@@ -63,21 +63,6 @@ func NewDcgmScraper(opts DcgmScraperOpts) (*DcgmScraper, error) {
 	}
 
 	scrapeConfig := &config.ScrapeConfig{
-		// TLS needs to be enabled between pods communication
-		// It can further get restricted by adding authentication mechanism to limit the data
-		//HTTPClientConfig: configutil.HTTPClientConfig{
-		//	BasicAuth: &configutil.BasicAuth{
-		//		Username: "",
-		//		Password: "",
-		//	},
-		//	Authorization: &configutil.Authorization{
-		//		Type: "basic_auth",
-		//	},
-		//	TLSConfig: configutil.TLSConfig{
-		//		CAFile:             caFile,
-		//		InsecureSkipVerify: false,
-		//	},
-		//},
 		ScrapeInterval: model.Duration(collectionInterval),
 		ScrapeTimeout:  model.Duration(collectionInterval),
 		JobName:        jobName,

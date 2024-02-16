@@ -59,6 +59,5 @@ type Config struct {
 	EnableControlPlaneMetrics bool `mapstructure:"enable_control_plane_metrics"`
 
 	// EnableGpuMetric toggles GPU monitoring where metrics are scraped from vendor specific sources
-	// The default value is true meaning GPU metrics get collected out of the box unless it's disabled
 	EnableGpuMetric bool `mapstructure:"gpu_metrics"`
 }
