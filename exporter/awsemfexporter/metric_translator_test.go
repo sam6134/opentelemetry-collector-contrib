@@ -370,8 +370,8 @@ func TestTranslateOtToGroupedMetric(t *testing.T) {
 				"spanName":    "testSpan",
 			},
 			map[string]string{
-				(oTellibDimensionKey): "cloudwatch-lib",
-				"spanName":            "testSpan",
+				oTellibDimensionKey: "cloudwatch-lib",
+				"spanName":          "testSpan",
 			},
 			"myServiceNS/containerInsightsKubeAPIServerScraper",
 			containerInsightsReceiver,
@@ -384,8 +384,8 @@ func TestTranslateOtToGroupedMetric(t *testing.T) {
 				"spanName":    "testSpan",
 			},
 			map[string]string{
-				(oTellibDimensionKey): "cloudwatch-lib",
-				"spanName":            "testSpan",
+				oTellibDimensionKey: "cloudwatch-lib",
+				"spanName":          "testSpan",
 			},
 			"myServiceNS/containerInsightsDCGMExporterScraper",
 			containerInsightsReceiver,
@@ -634,7 +634,6 @@ func TestTranslateGroupedMetricToCWMetric(t *testing.T) {
 		groupedMetric           *groupedMetric
 		metricDeclarations      []*MetricDeclaration
 		disableMetricExtraction bool
-		enableGpuMetrics        bool
 		expectedCWMetric        *cWMetrics
 	}{
 		{
@@ -657,7 +656,6 @@ func TestTranslateGroupedMetricToCWMetric(t *testing.T) {
 				},
 			},
 			nil,
-			false,
 			false,
 			&cWMetrics{
 				measurements: []cWMeasurement{
@@ -704,7 +702,6 @@ func TestTranslateGroupedMetricToCWMetric(t *testing.T) {
 					MetricNameSelectors: []string{"metric.*"},
 				},
 			},
-			false,
 			false,
 			&cWMetrics{
 				measurements: []cWMeasurement{
@@ -755,7 +752,6 @@ func TestTranslateGroupedMetricToCWMetric(t *testing.T) {
 				},
 			},
 			nil,
-			false,
 			false,
 			&cWMetrics{
 				measurements: []cWMeasurement{
@@ -833,7 +829,6 @@ func TestTranslateGroupedMetricToCWMetric(t *testing.T) {
 				},
 			},
 			false,
-			false,
 			&cWMetrics{
 				measurements: []cWMeasurement{
 					{
@@ -883,7 +878,6 @@ func TestTranslateGroupedMetricToCWMetric(t *testing.T) {
 			},
 			nil,
 			false,
-			false,
 			&cWMetrics{
 				measurements: []cWMeasurement{
 					{
@@ -920,7 +914,6 @@ func TestTranslateGroupedMetricToCWMetric(t *testing.T) {
 				},
 			},
 			nil,
-			false,
 			false,
 			&cWMetrics{
 				measurements: []cWMeasurement{
@@ -964,7 +957,6 @@ func TestTranslateGroupedMetricToCWMetric(t *testing.T) {
 			},
 			nil,
 			true,
-			false,
 			&cWMetrics{
 				measurements: []cWMeasurement{},
 				timestampMs:  timestamp,
@@ -984,7 +976,6 @@ func TestTranslateGroupedMetricToCWMetric(t *testing.T) {
 				MetricDeclarations:      tc.metricDeclarations,
 				DimensionRollupOption:   "",
 				DisableMetricExtraction: tc.disableMetricExtraction,
-				EnableGpuMetric:         tc.enableGpuMetrics,
 				logger:                  logger,
 			}
 			for _, decl := range tc.metricDeclarations {

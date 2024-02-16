@@ -44,7 +44,6 @@ type DcgmScraperOpts struct {
 	Consumer          consumer.Metrics
 	Host              component.Host
 	HostInfoProvider  hostInfoProvider
-	BearerToken       string
 }
 
 type hostInfoProvider interface {
@@ -135,14 +134,14 @@ func NewDcgmScraper(opts DcgmScraperOpts) (*DcgmScraper, error) {
 			{
 				SourceLabels: model.LabelNames{"namespace"},
 				TargetLabel:  "ClusterName",
-				Regex:        relabel.MustNewRegexp("(.*)"),
+				Regex:        relabel.MustNewRegexp(".*"),
 				Replacement:  opts.HostInfoProvider.GetClusterName(),
 				Action:       relabel.Replace,
 			},
 			{
 				SourceLabels: model.LabelNames{"namespace"},
 				TargetLabel:  "InstanceId",
-				Regex:        relabel.MustNewRegexp("(.*)"),
+				Regex:        relabel.MustNewRegexp(".*"),
 				Replacement:  opts.HostInfoProvider.GetInstanceID(),
 				Action:       relabel.Replace,
 			},

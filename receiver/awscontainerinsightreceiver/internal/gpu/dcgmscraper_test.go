@@ -155,7 +155,6 @@ func TestNewDcgmScraperEndToEnd(t *testing.T) {
 		Consumer:          mockConsumer{},
 		Host:              componenttest.NewNopHost(),
 		HostInfoProvider:  mockHostInfoProvider{},
-		BearerToken:       "",
 	})
 	assert.NoError(t, err)
 	assert.Equal(t, mockHostInfoProvider{}, scraper.hostInfoProvider)

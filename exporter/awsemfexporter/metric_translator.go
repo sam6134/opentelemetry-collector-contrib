@@ -32,7 +32,6 @@ const (
 	containerInsightsReceiver = "awscontainerinsight"
 	attributeReceiver         = "receiver"
 	fieldPrometheusMetricType = "prom_metric_type"
-	gpuInstanceDimensionKey   = "GpuDevice"
 )
 
 var errMissingMetricsForEnhancedContainerInsights = errors.New("nil event detected with EnhancedContainerInsights enabled")
