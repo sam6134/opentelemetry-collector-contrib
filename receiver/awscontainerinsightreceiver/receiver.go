@@ -101,12 +101,12 @@ func (acir *awsContainerInsightReceiver) Start(ctx context.Context, host compone
 			return err
 		}
 
-		err = acir.startPrometheusScraper(ctx, host, hostinfo, leaderElection)
+		err = acir.initPrometheusScraper(ctx, host, hostinfo, leaderElection)
 		if err != nil {
 			acir.settings.Logger.Debug("Unable to start kube apiserver prometheus scraper", zap.Error(err))
 		}
 
-		err = acir.startDcgmScraper(ctx, host, hostinfo)
+		err = acir.initDcgmScraper(ctx, host, hostinfo)
 		if err != nil {
 			acir.settings.Logger.Debug("Unable to start dcgm scraper", zap.Error(err))
 		}
@@ -155,7 +155,7 @@ func (acir *awsContainerInsightReceiver) Start(ctx context.Context, host compone
 	return nil
 }
 
-func (acir *awsContainerInsightReceiver) startPrometheusScraper(ctx context.Context, host component.Host, hostinfo *hostInfo.Info, leaderElection *k8sapiserver.LeaderElection) error {
+func (acir *awsContainerInsightReceiver) initPrometheusScraper(ctx context.Context, host component.Host, hostinfo *hostInfo.Info, leaderElection *k8sapiserver.LeaderElection) error {
 	if !acir.config.EnableControlPlaneMetrics {
 		return nil
 	}
@@ -189,27 +189,18 @@ func (acir *awsContainerInsightReceiver) startPrometheusScraper(ctx context.Cont
 	})
 	return err
 }
-func (acir *awsContainerInsightReceiver) startDcgmScraper(ctx context.Context, host component.Host, hostinfo *hostInfo.Info) error {
+func (acir *awsContainerInsightReceiver) initDcgmScraper(ctx context.Context, host component.Host, hostinfo *hostInfo.Info) error {
 	if !acir.config.EnableGpuMetric {
 		return nil
 	}
 
-	restConfig, err := rest.InClusterConfig()
-	if err != nil {
-		return err
-	}
-	bearerToken := restConfig.BearerToken
-	if bearerToken == "" {
-		return errors.New("bearer token was empty")
-	}
-
+	var err error
 	acir.dcgmScraper, err = gpu.NewDcgmScraper(gpu.DcgmScraperOpts{
 		Ctx:               ctx,
 		TelemetrySettings: acir.settings,
 		Consumer:          acir.nextConsumer,
 		Host:              host,
 		HostInfoProvider:  hostinfo,
-		BearerToken:       bearerToken,
 	})
 	return err
 }

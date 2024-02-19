@@ -100,9 +100,6 @@ type Config struct {
 	// MiddlewareID is an ID for an extension that can be used to configure the AWS client.
 	MiddlewareID *component.ID `mapstructure:"middleware,omitempty"`
 
-	// EnableGpuMetric indicates payloads will include GPU metrics
-	EnableGpuMetric bool `mapstructure:"gpu_metrics"`
-
 	// logger is the Logger used for writing error/warning logs
 	logger *zap.Logger
 }

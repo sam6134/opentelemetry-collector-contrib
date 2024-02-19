@@ -44,7 +44,6 @@ type DcgmScraperOpts struct {
 	Consumer          consumer.Metrics
 	Host              component.Host
 	HostInfoProvider  hostInfoProvider
-	BearerToken       string
 }
 
 type hostInfoProvider interface {
@@ -64,21 +63,6 @@ func NewDcgmScraper(opts DcgmScraperOpts) (*DcgmScraper, error) {
 	}
 
 	scrapeConfig := &config.ScrapeConfig{
-		// TLS needs to be enabled between pods communication
-		// It can further get restricted by adding authentication mechanism to limit the data
-		//HTTPClientConfig: configutil.HTTPClientConfig{
-		//	BasicAuth: &configutil.BasicAuth{
-		//		Username: "",
-		//		Password: "",
-		//	},
-		//	Authorization: &configutil.Authorization{
-		//		Type: "basic_auth",
-		//	},
-		//	TLSConfig: configutil.TLSConfig{
-		//		CAFile:             caFile,
-		//		InsecureSkipVerify: false,
-		//	},
-		//},
 		ScrapeInterval: model.Duration(collectionInterval),
 		ScrapeTimeout:  model.Duration(collectionInterval),
 		JobName:        jobName,
@@ -86,13 +70,13 @@ func NewDcgmScraper(opts DcgmScraperOpts) (*DcgmScraper, error) {
 		MetricsPath:    "/metrics",
 		ServiceDiscoveryConfigs: discovery.Configs{
 			&kubernetes.SDConfig{
-				Role: kubernetes.RoleEndpoint,
+				Role: kubernetes.RoleService,
 				NamespaceDiscovery: kubernetes.NamespaceDiscovery{
 					IncludeOwnNamespace: true,
 				},
 				Selectors: []kubernetes.SelectorConfig{
 					{
-						Role:  kubernetes.RoleEndpoint,
+						Role:  kubernetes.RoleService,
 						Label: "k8s-app=dcgm-exporter-service",
 					},
 				},
@@ -109,26 +93,19 @@ func NewDcgmScraper(opts DcgmScraperOpts) (*DcgmScraper, error) {
 				TargetLabel:  "__address__",
 				Action:       relabel.Replace,
 			},
-			{
-				SourceLabels: model.LabelNames{"__meta_kubernetes_pod_node_name"},
-				TargetLabel:  "NodeName",
-				Regex:        relabel.MustNewRegexp("(.*)"),
-				Replacement:  "$1",
-				Action:       relabel.Replace,
-			},
-			{
-				SourceLabels: model.LabelNames{"__meta_kubernetes_service_name"},
-				TargetLabel:  "Service",
-				Regex:        relabel.MustNewRegexp("(.*)"),
-				Replacement:  "$1",
-				Action:       relabel.Replace,
-			},
 		},
 		MetricRelabelConfigs: []*relabel.Config{
 			{
 				SourceLabels: model.LabelNames{"__name__"},
 				Regex:        relabel.MustNewRegexp("DCGM_.*"),
 				Action:       relabel.Keep,
+			},
+			{
+				SourceLabels: model.LabelNames{"Hostname"},
+				TargetLabel:  "NodeName",
+				Regex:        relabel.MustNewRegexp("(.*)"),
+				Replacement:  "${1}",
+				Action:       relabel.Replace,
 			},
 			{
 				SourceLabels: model.LabelNames{"namespace"},
@@ -142,14 +119,14 @@ func NewDcgmScraper(opts DcgmScraperOpts) (*DcgmScraper, error) {
 			{
 				SourceLabels: model.LabelNames{"namespace"},
 				TargetLabel:  "ClusterName",
-				Regex:        relabel.MustNewRegexp("(.*)"),
+				Regex:        relabel.MustNewRegexp(".*"),
 				Replacement:  opts.HostInfoProvider.GetClusterName(),
 				Action:       relabel.Replace,
 			},
 			{
 				SourceLabels: model.LabelNames{"namespace"},
 				TargetLabel:  "InstanceId",
-				Regex:        relabel.MustNewRegexp("(.*)"),
+				Regex:        relabel.MustNewRegexp(".*"),
 				Replacement:  opts.HostInfoProvider.GetInstanceID(),
 				Action:       relabel.Replace,
 			},
@@ -164,6 +141,28 @@ func NewDcgmScraper(opts DcgmScraperOpts) (*DcgmScraper, error) {
 				SourceLabels: model.LabelNames{"pod"},
 				TargetLabel:  "PodName",
 				Regex:        relabel.MustNewRegexp("(.+)-(.+)"),
+				Replacement:  "${1}",
+				Action:       relabel.Replace,
+			},
+			// additional k8s podname for service name decoration
+			{
+				SourceLabels: model.LabelNames{"pod"},
+				TargetLabel:  "K8sPodName",
+				Regex:        relabel.MustNewRegexp("(.*)"),
+				Replacement:  "${1}",
+				Action:       relabel.Replace,
+			},
+			{
+				SourceLabels: model.LabelNames{"container"},
+				TargetLabel:  "ContainerName",
+				Regex:        relabel.MustNewRegexp("(.*)"),
+				Replacement:  "${1}",
+				Action:       relabel.Replace,
+			},
+			{
+				SourceLabels: model.LabelNames{"device"},
+				TargetLabel:  "GpuDevice",
+				Regex:        relabel.MustNewRegexp("(.*)"),
 				Replacement:  "${1}",
 				Action:       relabel.Replace,
 			},
