@@ -1,84 +1,155 @@
-package stores
+// Copyright The OpenTelemetry Authors
+// SPDX-License-Identifier: Apache-2.0
+
+package stores // import "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awscontainerinsightreceiver/internal/stores"
 
 import (
 	"context"
+	"fmt"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/metadata"
-	"google.golang.org/grpc/status"
-	podresourcesapi "k8s.io/kubelet/pkg/apis/podresources/v1"
+	"go.uber.org/zap"
+
+	podresourcesv1 "k8s.io/kubelet/pkg/apis/podresources/v1"
+	v1 "k8s.io/kubelet/pkg/apis/podresources/v1"
 )
 
-func TestGetPodResources_Success(t *testing.T) {
-	instance = &PodResourcesStore{}
-
-	osStatOrig := osStat
-	osStat = func(name string) (os.FileInfo, error) {
-		return nil, nil
+var (
+	expectedContainerInfoToResourcesMap = map[ContainerInfo][]ResourceInfo{
+		{ // ContainerInfo
+			podName:       "test-pod",
+			containerName: "test-container",
+			namespace:     "test-namespace",
+		}: {
+			{ // ResourceInfo
+				resourceName: "test-resource",
+				deviceID:     "device-id-1",
+			},
+			{ // ResourceInfo
+				resourceName: "test-resource",
+				deviceID:     "device-id-2",
+			},
+		},
 	}
-	defer func() { osStat = osStatOrig }()
 
-	connectToServerOrig := instance.connectToServer
-	instance.connectToServer = func(socket string) (*grpc.ClientConn, func(), error) {
-		mockClientConn := &grpc.ClientConn{}
-		mockCleanup := func() {}
-		return mockClientConn, mockCleanup, nil
+	expectedResourceToPodContainerMap = map[ResourceInfo]ContainerInfo{
+		{ // ResourceInfo
+			resourceName: "test-resource",
+			deviceID:     "device-id-1",
+		}: { // ContainerInfo
+			podName:       "test-pod",
+			containerName: "test-container",
+			namespace:     "test-namespace",
+		},
+		{ // ResourceInfo
+			resourceName: "test-resource",
+			deviceID:     "device-id-2",
+		}: { // ContainerInfo
+			podName:       "test-pod",
+			containerName: "test-container",
+			namespace:     "test-namespace",
+		},
 	}
-	defer func() { instance.connectToServer = connectToServerOrig }()
+)
 
-	listPodsOrig := instance.listPods
-	mockResponse := &podresourcesapi.ListPodResourcesResponse{}
-	instance.listPods = func(conn *grpc.ClientConn) (*podresourcesapi.ListPodResourcesResponse, error) {
-		return mockResponse, nil
-	}
-	defer func() { instance.listPods = listPodsOrig }()
-
-	resp, err := instance.GetPodResources()
-
-	assert.NoError(t, err)
-	assert.Equal(t, mockResponse, resp)
+// MockPodResourcesClient is a mock implementation of PodResourcesClient
+type MockPodResourcesClient struct {
 }
 
-func TestGetPodResources_Error(t *testing.T) {
-	instance = &PodResourcesStore{}
-
-	osStatOrig := osStat
-	osStat = func(name string) (os.FileInfo, error) {
-		return nil, assert.AnError
+// ListPods mocks the ListPods method of PodResourcesClient
+func (m *MockPodResourcesClient) ListPods() (*podresourcesv1.ListPodResourcesResponse, error) {
+	mockResp := &podresourcesv1.ListPodResourcesResponse{
+		PodResources: []*v1.PodResources{
+			{
+				Name:      "test-pod",
+				Namespace: "test-namespace",
+				Containers: []*v1.ContainerResources{
+					{
+						Name: "test-container",
+						Devices: []*v1.ContainerDevices{
+							{
+								ResourceName: "test-resource",
+								DeviceIds:    []string{"device-id-1", "device-id-2"},
+							},
+						},
+					},
+				},
+			},
+		},
 	}
-	defer func() { osStat = osStatOrig }()
-
-	_, err := instance.GetPodResources()
-
-	assert.Error(t, err)
+	return mockResp, nil
 }
 
-func TestConnectToServer_Error(t *testing.T) {
-	instance = &PodResourcesStore{}
-
-	grpcDialContextOrig := grpcDialContext
-	grpcDialContext = func(ctx context.Context, target string, opts ...grpc.DialOption) (*grpc.ClientConn, error) {
-		return nil, assert.AnError
-	}
-	defer func() { grpcDialContext = grpcDialContextOrig }()
-
-	_, _, err := instance.connectToServer("dummy-socket")
-
-	assert.Error(t, err)
+func TestNewPodResourcesStore(t *testing.T) {
+	// Test initialization of PodResourcesStore
+	logger := zap.NewNop()
+	store := NewPodResourcesStore(logger)
+	assert.NotNil(t, store, "PodResourcesStore should not be nil")
+	assert.NotNil(t, store.ctx, "Context should not be nil")
+	assert.NotNil(t, store.cancel, "Cancel function should not be nil")
 }
 
-func TestListPods_Error(t *testing.T) {
-	instance = &PodResourcesStore{}
+func TestRefreshTick(t *testing.T) {
+	logger, _ := zap.NewDevelopment()
 
-	listOrig := clientList
-	clientList = func(ctx context.Context, in *podresourcesapi.ListPodResourcesRequest, opts ...grpc.CallOption) (*podresourcesapi.ListPodResourcesResponse, error) {
-		return nil, assert.AnError
+	// Create a PodResourcesStore instance with the mocked client and logger
+	store := &PodResourcesStore{
+		containerInfoToResourcesMap: make(map[ContainerInfo][]ResourceInfo),
+		resourceToPodContainerMap:   make(map[ResourceInfo]ContainerInfo),
+		lastRefreshed:               time.Now(),
+		ctx:                         context.Background(),
+		cancel:                      func() {},
+		logger:                      logger,
+		podResourcesClient:          &MockPodResourcesClient{},
 	}
-	defer func() { clientList = listOrig }()
 
-	_, err := instance.listPods(&grpc.ClientConn{})
+	// Set the lastRefreshed time to an hour ago
+	store.lastRefreshed = time.Now().Add(-time.Hour)
 
-	assert.Error(t, err)
+	// Call refreshTick
+	store.refreshTick()
+
+	// Check if lastRefreshed has been updated
+	assert.True(t, store.lastRefreshed.After(time.Now().Add(-time.Hour)), "lastRefreshed should have been updated")
+}
+
+func TestUpdateMaps(t *testing.T) {
+	logger, _ := zap.NewDevelopment()
+
+	// Create a PodResourcesStore instance with the mocked client and logger
+	store := &PodResourcesStore{
+		containerInfoToResourcesMap: make(map[ContainerInfo][]ResourceInfo),
+		resourceToPodContainerMap:   make(map[ResourceInfo]ContainerInfo),
+		lastRefreshed:               time.Now(),
+		ctx:                         context.Background(),
+		cancel:                      func() {},
+		logger:                      logger,
+		podResourcesClient:          &MockPodResourcesClient{},
+	}
+
+	// Call the updateMaps method
+	store.updateMaps()
+
+	// Assert that the maps are updated correctly
+	assert.NotNil(t, store.containerInfoToResourcesMap)
+	assert.NotNil(t, store.resourceToPodContainerMap)
+
+	// Print containerInfoToResourcesMap
+	fmt.Println("containerInfoToResourcesMap:")
+	for key, value := range store.containerInfoToResourcesMap {
+		fmt.Printf("Key: %+v, Value: %+v\n", key, value)
+	}
+
+	// Print resourceToPodContainerMap
+	fmt.Println("\nresourceToPodContainerMap:")
+	for key, value := range store.resourceToPodContainerMap {
+		fmt.Printf("Key: %+v, Value: %+v\n", key, value)
+	}
+
+	assert.Equal(t, len(expectedContainerInfoToResourcesMap), len(store.containerInfoToResourcesMap))
+	assert.Equal(t, len(expectedResourceToPodContainerMap), len(store.resourceToPodContainerMap))
+	assert.Equal(t, expectedContainerInfoToResourcesMap, store.containerInfoToResourcesMap)
+	assert.Equal(t, expectedResourceToPodContainerMap, store.resourceToPodContainerMap)
 }

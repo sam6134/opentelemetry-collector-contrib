@@ -1,21 +1,23 @@
-package stores
+// Copyright The OpenTelemetry Authors
+// SPDX-License-Identifier: Apache-2.0
+
+package stores // import "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awscontainerinsightreceiver/internal/stores"
 
 import (
 	"context"
 	"fmt"
-	"net"
-	"os"
 	"sync"
 	"time"
 
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
-	podresourcesapi "k8s.io/kubelet/pkg/apis/podresources/v1"
+	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awscontainerinsightreceiver/internal/stores/kubeletutil"
+	"go.uber.org/zap"
+	podresourcesv1 "k8s.io/kubelet/pkg/apis/podresources/v1"
 )
 
 const (
 	socketPath        = "/var/lib/kubelet/pod-resources/kubelet.sock"
 	connectionTimeout = 10 * time.Second
+	taskTimeout       = 10 * time.Second
 )
 
 var (
@@ -23,63 +25,107 @@ var (
 	once     sync.Once
 )
 
+type ContainerInfo struct {
+	podName       string
+	containerName string
+	namespace     string
+}
+
+type ResourceInfo struct {
+	resourceName string
+	deviceID     string
+}
+
+type PodResourcesClientInterface interface {
+	ListPods() (*podresourcesv1.ListPodResourcesResponse, error)
+}
+
 type PodResourcesStore struct {
+	containerInfoToResourcesMap map[ContainerInfo][]ResourceInfo
+	resourceToPodContainerMap   map[ResourceInfo]ContainerInfo
+	lastRefreshed               time.Time
+	ctx                         context.Context
+	cancel                      context.CancelFunc
+	logger                      *zap.Logger
+	podResourcesClient          PodResourcesClientInterface
 }
 
-func init() {
+func NewPodResourcesStore(logger *zap.Logger) *PodResourcesStore {
 	once.Do(func() {
-		instance = &PodResourcesStore{}
+		podResourcesClient, _ := kubeletutil.NewPodResourcesClient()
+		ctx, cancel := context.WithCancel(context.Background())
+		instance = &PodResourcesStore{
+			containerInfoToResourcesMap: make(map[ContainerInfo][]ResourceInfo),
+			resourceToPodContainerMap:   make(map[ResourceInfo]ContainerInfo),
+			lastRefreshed:               time.Now(),
+			ctx:                         ctx,
+			cancel:                      cancel,
+			logger:                      logger,
+			podResourcesClient:          podResourcesClient,
+		}
+
+		go func() {
+			refreshTicker := time.NewTicker(time.Second)
+			for {
+				select {
+				case <-refreshTicker.C:
+					instance.refreshTick()
+				case <-instance.ctx.Done():
+					refreshTicker.Stop()
+					return
+				}
+			}
+		}()
 	})
+	return instance
 }
 
-func (p *PodResourcesStore) GetPodResources() (*podresourcesapi.ListPodResourcesResponse, error) {
-	_, err := os.Stat(socketPath)
-	if os.IsNotExist(err) {
-		return nil, fmt.Errorf("socket path does not exist: %s", socketPath)
-	} else if err != nil {
-		return nil, fmt.Errorf("failed to check socket path: %v", err)
+func (p *PodResourcesStore) refreshTick() {
+	now := time.Now()
+	if now.Sub(p.lastRefreshed) >= taskTimeout {
+		p.refresh()
+		p.lastRefreshed = now
 	}
-
-	conn, cleanup, err := p.connectToServer(socketPath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to connect to server: %v", err)
-	}
-	defer cleanup()
-
-	return p.listPods(conn)
 }
 
-func (p *PodResourcesStore) connectToServer(socket string) (*grpc.ClientConn, func(), error) {
-	ctx, cancel := context.WithTimeout(context.Background(), connectionTimeout)
-	defer cancel()
-
-	conn, err := grpc.DialContext(ctx,
-		socket,
-		grpc.WithTransportCredentials(insecure.NewCredentials()),
-		grpc.WithBlock(),
-		grpc.WithContextDialer(func(ctx context.Context, addr string) (net.Conn, error) {
-			d := net.Dialer{}
-			return d.DialContext(ctx, "unix", addr)
-		}),
-	)
-
-	if err != nil {
-		return nil, func() {}, fmt.Errorf("failure connecting to '%s': %v", socket, err)
+func (p *PodResourcesStore) refresh() {
+	doRefresh := func() {
+		p.updateMaps()
 	}
 
-	return conn, func() { conn.Close() }, nil
+	refreshWithTimeout(p.ctx, doRefresh, taskTimeout)
 }
 
-func (p *PodResourcesStore) listPods(conn *grpc.ClientConn) (*podresourcesapi.ListPodResourcesResponse, error) {
-	client := podresourcesapi.NewPodResourcesListerClient(conn)
+func (p *PodResourcesStore) updateMaps() {
+	p.containerInfoToResourcesMap = make(map[ContainerInfo][]ResourceInfo)
+	p.resourceToPodContainerMap = make(map[ResourceInfo]ContainerInfo)
 
-	ctx, cancel := context.WithTimeout(context.Background(), connectionTimeout)
-	defer cancel()
+	devicePods, err := p.podResourcesClient.ListPods()
 
-	resp, err := client.List(ctx, &podresourcesapi.ListPodResourcesRequest{})
 	if err != nil {
-		return nil, fmt.Errorf("failure getting pod resources: %v", err)
+		p.logger.Error(fmt.Sprintf("Error getting pod resources: %v", err))
+		return
 	}
 
-	return resp, nil
+	for _, pod := range devicePods.GetPodResources() {
+		for _, container := range pod.GetContainers() {
+			for _, device := range container.GetDevices() {
+
+				containerInfo := ContainerInfo{
+					podName:       pod.GetName(),
+					namespace:     pod.GetNamespace(),
+					containerName: container.GetName(),
+				}
+
+				for _, deviceID := range device.GetDeviceIds() {
+					resourceInfo := ResourceInfo{
+						resourceName: device.GetResourceName(),
+						deviceID:     deviceID,
+					}
+					p.containerInfoToResourcesMap[containerInfo] = append(p.containerInfoToResourcesMap[containerInfo], resourceInfo)
+					p.resourceToPodContainerMap[resourceInfo] = containerInfo
+				}
+			}
+		}
+	}
 }
