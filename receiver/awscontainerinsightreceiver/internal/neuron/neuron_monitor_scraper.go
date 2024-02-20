@@ -30,34 +30,25 @@ const (
 )
 
 type NeuronMonitorScraper struct {
-	ctx                 context.Context
-	settings            component.TelemetrySettings
-	host                component.Host
-	hostInfoProvider    hostInfoProvider
-	podNameInfoProvider podNameInfoProvider
-	prometheusReceiver  receiver.Metrics
-	running             bool
+	ctx                context.Context
+	settings           component.TelemetrySettings
+	host               component.Host
+	hostInfoProvider   hostInfoProvider
+	prometheusReceiver receiver.Metrics
+	running            bool
 }
 
 type NeuronMonitorScraperOpts struct {
-	Ctx                 context.Context
-	TelemetrySettings   component.TelemetrySettings
-	Consumer            consumer.Metrics
-	Host                component.Host
-	HostInfoProvider    hostInfoProvider
-	PodNameInfoProvider podNameInfoProvider
-	BearerToken         string
+	Ctx               context.Context
+	TelemetrySettings component.TelemetrySettings
+	Consumer          consumer.Metrics
+	Host              component.Host
+	HostInfoProvider  hostInfoProvider
 }
 
 type hostInfoProvider interface {
 	GetClusterName() string
 	GetInstanceID() string
-}
-
-// lets assume new provider will provide PodName
-type podNameInfoProvider interface {
-	GetPodName() string
-	GetNamespace() string
 }
 
 func NewNeuronMonitorScraper(opts NeuronMonitorScraperOpts) (*NeuronMonitorScraper, error) {
@@ -70,26 +61,8 @@ func NewNeuronMonitorScraper(opts NeuronMonitorScraperOpts) (*NeuronMonitorScrap
 	if opts.HostInfoProvider == nil {
 		return nil, errors.New("cluster name provider cannot be nil")
 	}
-	if opts.PodNameInfoProvider == nil {
-		return nil, errors.New("pod name provider cannot be nil")
-	}
 
 	scrapeConfig := &config.ScrapeConfig{
-		// TLS needs to be enabled between pods communication
-		// It can further get restricted by adding authentication mechanism to limit the data
-		//HTTPClientConfig: configutil.HTTPClientConfig{
-		//	BasicAuth: &configutil.BasicAuth{
-		//		Username: "",
-		//		Password: "",
-		//	},
-		//	Authorization: &configutil.Authorization{
-		//		Type: "basic_auth",
-		//	},
-		//	TLSConfig: configutil.TLSConfig{
-		//		CAFile:             caFile,
-		//		InsecureSkipVerify: false,
-		//	},
-		//},
 		ScrapeInterval: model.Duration(collectionInterval),
 		ScrapeTimeout:  model.Duration(collectionInterval),
 		JobName:        jobName,
@@ -97,14 +70,14 @@ func NewNeuronMonitorScraper(opts NeuronMonitorScraperOpts) (*NeuronMonitorScrap
 		MetricsPath:    "/metrics",
 		ServiceDiscoveryConfigs: discovery.Configs{
 			&kubernetes.SDConfig{
-				Role: kubernetes.RoleEndpoint,
+				Role: kubernetes.RoleService,
 				NamespaceDiscovery: kubernetes.NamespaceDiscovery{
 					IncludeOwnNamespace: true,
 				},
 				Selectors: []kubernetes.SelectorConfig{
 					{
-						Role:  kubernetes.RoleEndpoint,
-						Label: "k8s-app=dcgm-exporter-service", // TODO: Find the correct name
+						Role:  kubernetes.RoleService,
+						Label: "k8s-app=neuron-monitor-service",
 					},
 				},
 				AttachMetadata: kubernetes.AttachMetadataConfig{
@@ -116,64 +89,68 @@ func NewNeuronMonitorScraper(opts NeuronMonitorScraperOpts) (*NeuronMonitorScrap
 			{
 				SourceLabels: model.LabelNames{"__address__"},
 				Regex:        relabel.MustNewRegexp("([^:]+)(?::\\d+)?"),
-				Replacement:  "${1}:9400",
+				Replacement:  "${1}:8000",
 				TargetLabel:  "__address__",
-				Action:       relabel.Replace,
-			},
-			{
-				SourceLabels: model.LabelNames{"__meta_kubernetes_pod_node_name"},
-				TargetLabel:  "NodeName",
-				Regex:        relabel.MustNewRegexp("(.*)"),
-				Replacement:  "$1",
-				Action:       relabel.Replace,
-			},
-			{
-				SourceLabels: model.LabelNames{"__meta_kubernetes_service_name"},
-				TargetLabel:  "Service",
-				Regex:        relabel.MustNewRegexp("(.*)"),
-				Replacement:  "$1",
 				Action:       relabel.Replace,
 			},
 		},
 		MetricRelabelConfigs: []*relabel.Config{
 			{
 				SourceLabels: model.LabelNames{"__name__"},
-				Regex:        relabel.MustNewRegexp("neuron.*"),
+				Regex:        relabel.MustNewRegexp("neuron.*|system_.*|execution_.*"),
 				Action:       relabel.Keep,
 			},
-			// hacky way to inject static values (clusterName & instanceId) to label set without additional processor
-			// relabel looks up an existing label then creates another label with given key (TargetLabel) and value (static)
 			{
-				SourceLabels: model.LabelNames{"__name__"},
-				TargetLabel:  "Namespace",
-				Regex:        relabel.MustNewRegexp("neuron.*"),
-				Replacement:  opts.PodNameInfoProvider.GetNamespace(),
+				SourceLabels: model.LabelNames{"instance_name"},
+				TargetLabel:  "NodeName",
+				Regex:        relabel.MustNewRegexp("(.*)"),
+				Replacement:  "${1}",
 				Action:       relabel.Replace,
 			},
 			{
-				SourceLabels: model.LabelNames{"__name__"},
-				TargetLabel:  "ClusterName",
-				Regex:        relabel.MustNewRegexp("neuron.*"),
-				Replacement:  opts.HostInfoProvider.GetClusterName(),
-				Action:       relabel.Replace,
-			},
-			{
-				SourceLabels: model.LabelNames{"__name__"},
+				SourceLabels: model.LabelNames{"instance_id"},
 				TargetLabel:  "InstanceId",
-				Regex:        relabel.MustNewRegexp("neuron.*"),
-				Replacement:  opts.HostInfoProvider.GetInstanceID(),
-				Action:       relabel.Replace,
-			},
-			{
-				SourceLabels: model.LabelNames{"namespace"},
-				TargetLabel:  "PodName",
-				Regex:        relabel.MustNewRegexp("neuron.*"),
-				Replacement:  opts.PodNameInfoProvider.GetPodName(),
+				Regex:        relabel.MustNewRegexp("(.*)"),
+				Replacement:  "${1}",
 				Action:       relabel.Replace,
 			},
 			{
 				SourceLabels: model.LabelNames{"neuroncore"},
 				TargetLabel:  "DeviceId",
+				Regex:        relabel.MustNewRegexp("(.*)"),
+				Replacement:  "${1}",
+				Action:       relabel.Replace,
+			},
+			// hacky way to inject static values (clusterName) to label set without additional processor
+			// relabel looks up an existing label then creates another label with given key (TargetLabel) and value (static)
+			{
+				SourceLabels: model.LabelNames{"instance_id"},
+				TargetLabel:  "ClusterName",
+				Regex:        relabel.MustNewRegexp("neuron.*"),
+				Replacement:  opts.HostInfoProvider.GetClusterName(),
+				Action:       relabel.Replace,
+			},
+			// hacky way to inject static values (namespace, podName, containerName) to label set without additional processor,
+			// we need these labels only when we have neuronCore label specified in logs
+			// we process and replace with actual podName, namespace and ContainerName
+			// relabel looks up an existing label then creates another label with given key (TargetLabel) and value (static)
+			{
+				SourceLabels: model.LabelNames{"neuroncore"},
+				TargetLabel:  "Namespace",
+				Regex:        relabel.MustNewRegexp("(.*)"),
+				Replacement:  "${1}",
+				Action:       relabel.Replace,
+			},
+			{
+				SourceLabels: model.LabelNames{"neuroncore"},
+				TargetLabel:  "PodName",
+				Regex:        relabel.MustNewRegexp("(.*)"),
+				Replacement:  "${1}",
+				Action:       relabel.Replace,
+			},
+			{
+				SourceLabels: model.LabelNames{"neuroncore"},
+				TargetLabel:  "ContainerName",
 				Regex:        relabel.MustNewRegexp("(.*)"),
 				Replacement:  "${1}",
 				Action:       relabel.Replace,
@@ -198,12 +175,11 @@ func NewNeuronMonitorScraper(opts NeuronMonitorScraperOpts) (*NeuronMonitorScrap
 	}
 
 	return &NeuronMonitorScraper{
-		ctx:                 opts.Ctx,
-		settings:            opts.TelemetrySettings,
-		host:                opts.Host,
-		hostInfoProvider:    opts.HostInfoProvider,
-		podNameInfoProvider: opts.PodNameInfoProvider,
-		prometheusReceiver:  promReceiver,
+		ctx:                opts.Ctx,
+		settings:           opts.TelemetrySettings,
+		host:               opts.Host,
+		hostInfoProvider:   opts.HostInfoProvider,
+		prometheusReceiver: promReceiver,
 	}, nil
 }
 

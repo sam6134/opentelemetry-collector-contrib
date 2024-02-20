@@ -10,7 +10,6 @@ import (
 
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awscontainerinsightreceiver/internal/gpu"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awscontainerinsightreceiver/internal/neuron"
-	podinfo "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awscontainerinsightreceiver/internal/pod"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/consumer"
 	"go.opentelemetry.io/collector/pdata/pmetric"
@@ -73,11 +72,6 @@ func (acir *awsContainerInsightReceiver) Start(ctx context.Context, host compone
 		return err
 	}
 
-	podinfo, err := podinfo.NewInfo()
-	if err != nil {
-		return err
-	}
-
 	if acir.config.ContainerOrchestrator == ci.EKS {
 		k8sDecorator, err := stores.NewK8sDecorator(ctx, acir.config.TagService, acir.config.PrefFullPodName, acir.config.AddFullPodNameMetricLabel, acir.config.AddContainerNameMetricLabel, acir.config.EnableControlPlaneMetrics, acir.settings.Logger)
 		if err != nil {
@@ -111,7 +105,7 @@ func (acir *awsContainerInsightReceiver) Start(ctx context.Context, host compone
 			acir.settings.Logger.Debug("Unable to start dcgm scraper", zap.Error(err))
 		}
 
-		err = acir.startNeuronScraper(ctx, host, hostinfo, podinfo)
+		err = acir.initNeuronScraper(ctx, host, hostinfo)
 		if err != nil {
 			acir.settings.Logger.Debug("Unable to start dcgm scraper", zap.Error(err))
 		}
@@ -205,28 +199,18 @@ func (acir *awsContainerInsightReceiver) initDcgmScraper(ctx context.Context, ho
 	return err
 }
 
-func (acir *awsContainerInsightReceiver) startNeuronScraper(ctx context.Context, host component.Host, hostinfo *hostInfo.Info, podinfo *podinfo.Info) error {
+func (acir *awsContainerInsightReceiver) initNeuronScraper(ctx context.Context, host component.Host, hostinfo *hostInfo.Info) error {
 	if !acir.config.EnableNeuronMetric {
 		return nil
 	}
 
-	restConfig, err := rest.InClusterConfig()
-	if err != nil {
-		return err
-	}
-	bearerToken := restConfig.BearerToken
-	if bearerToken == "" {
-		return errors.New("bearer token was empty")
-	}
-
+	var err error
 	acir.neuronMonitorScraper, err = neuron.NewNeuronMonitorScraper(neuron.NeuronMonitorScraperOpts{
-		Ctx:                 ctx,
-		TelemetrySettings:   acir.settings,
-		Consumer:            acir.nextConsumer,
-		Host:                host,
-		HostInfoProvider:    hostinfo,
-		PodNameInfoProvider: podinfo,
-		BearerToken:         bearerToken,
+		Ctx:               ctx,
+		TelemetrySettings: acir.settings,
+		Consumer:          acir.nextConsumer,
+		Host:              host,
+		HostInfoProvider:  hostinfo,
 	})
 	return err
 }
