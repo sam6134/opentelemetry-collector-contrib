@@ -5,7 +5,6 @@ package stores // import "github.com/open-telemetry/opentelemetry-collector-cont
 
 import (
 	"context"
-	"fmt"
 	"testing"
 	"time"
 
@@ -18,16 +17,16 @@ import (
 
 var (
 	expectedContainerInfoToResourcesMap = map[ContainerInfo][]ResourceInfo{
-		{ // ContainerInfo
+		{
 			podName:       "test-pod",
 			containerName: "test-container",
 			namespace:     "test-namespace",
 		}: {
-			{ // ResourceInfo
+			{
 				resourceName: "test-resource",
 				deviceID:     "device-id-1",
 			},
-			{ // ResourceInfo
+			{
 				resourceName: "test-resource",
 				deviceID:     "device-id-2",
 			},
@@ -35,18 +34,18 @@ var (
 	}
 
 	expectedResourceToPodContainerMap = map[ResourceInfo]ContainerInfo{
-		{ // ResourceInfo
+		{
 			resourceName: "test-resource",
 			deviceID:     "device-id-1",
-		}: { // ContainerInfo
+		}: {
 			podName:       "test-pod",
 			containerName: "test-container",
 			namespace:     "test-namespace",
 		},
-		{ // ResourceInfo
+		{
 			resourceName: "test-resource",
 			deviceID:     "device-id-2",
-		}: { // ContainerInfo
+		}: {
 			podName:       "test-pod",
 			containerName: "test-container",
 			namespace:     "test-namespace",
@@ -54,11 +53,9 @@ var (
 	}
 )
 
-// MockPodResourcesClient is a mock implementation of PodResourcesClient
 type MockPodResourcesClient struct {
 }
 
-// ListPods mocks the ListPods method of PodResourcesClient
 func (m *MockPodResourcesClient) ListPods() (*podresourcesv1.ListPodResourcesResponse, error) {
 	mockResp := &podresourcesv1.ListPodResourcesResponse{
 		PodResources: []*v1.PodResources{
@@ -83,7 +80,6 @@ func (m *MockPodResourcesClient) ListPods() (*podresourcesv1.ListPodResourcesRes
 }
 
 func TestNewPodResourcesStore(t *testing.T) {
-	// Test initialization of PodResourcesStore
 	logger := zap.NewNop()
 	store := NewPodResourcesStore(logger)
 	assert.NotNil(t, store, "PodResourcesStore should not be nil")
@@ -94,7 +90,6 @@ func TestNewPodResourcesStore(t *testing.T) {
 func TestRefreshTick(t *testing.T) {
 	logger, _ := zap.NewDevelopment()
 
-	// Create a PodResourcesStore instance with the mocked client and logger
 	store := &PodResourcesStore{
 		containerInfoToResourcesMap: make(map[ContainerInfo][]ResourceInfo),
 		resourceToPodContainerMap:   make(map[ResourceInfo]ContainerInfo),
@@ -105,20 +100,16 @@ func TestRefreshTick(t *testing.T) {
 		podResourcesClient:          &MockPodResourcesClient{},
 	}
 
-	// Set the lastRefreshed time to an hour ago
 	store.lastRefreshed = time.Now().Add(-time.Hour)
 
-	// Call refreshTick
 	store.refreshTick()
 
-	// Check if lastRefreshed has been updated
 	assert.True(t, store.lastRefreshed.After(time.Now().Add(-time.Hour)), "lastRefreshed should have been updated")
 }
 
 func TestUpdateMaps(t *testing.T) {
 	logger, _ := zap.NewDevelopment()
 
-	// Create a PodResourcesStore instance with the mocked client and logger
 	store := &PodResourcesStore{
 		containerInfoToResourcesMap: make(map[ContainerInfo][]ResourceInfo),
 		resourceToPodContainerMap:   make(map[ResourceInfo]ContainerInfo),
@@ -129,25 +120,10 @@ func TestUpdateMaps(t *testing.T) {
 		podResourcesClient:          &MockPodResourcesClient{},
 	}
 
-	// Call the updateMaps method
 	store.updateMaps()
 
-	// Assert that the maps are updated correctly
 	assert.NotNil(t, store.containerInfoToResourcesMap)
 	assert.NotNil(t, store.resourceToPodContainerMap)
-
-	// Print containerInfoToResourcesMap
-	fmt.Println("containerInfoToResourcesMap:")
-	for key, value := range store.containerInfoToResourcesMap {
-		fmt.Printf("Key: %+v, Value: %+v\n", key, value)
-	}
-
-	// Print resourceToPodContainerMap
-	fmt.Println("\nresourceToPodContainerMap:")
-	for key, value := range store.resourceToPodContainerMap {
-		fmt.Printf("Key: %+v, Value: %+v\n", key, value)
-	}
-
 	assert.Equal(t, len(expectedContainerInfoToResourcesMap), len(store.containerInfoToResourcesMap))
 	assert.Equal(t, len(expectedResourceToPodContainerMap), len(store.resourceToPodContainerMap))
 	assert.Equal(t, expectedContainerInfoToResourcesMap, store.containerInfoToResourcesMap)
