@@ -10,9 +10,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/zap"
-
 	podresourcesv1 "k8s.io/kubelet/pkg/apis/podresources/v1"
-	v1 "k8s.io/kubelet/pkg/apis/podresources/v1"
 )
 
 var (
@@ -51,6 +49,23 @@ var (
 			namespace:     "test-namespace",
 		},
 	}
+
+	expectedContainerInfo = ContainerInfo{
+		podName:       "test-pod",
+		containerName: "test-container",
+		namespace:     "test-namespace",
+	}
+
+	expectedResourceInfo = []ResourceInfo{
+		{
+			resourceName: "test-resource",
+			deviceID:     "device-id-1",
+		},
+		{
+			resourceName: "test-resource",
+			deviceID:     "device-id-2",
+		},
+	}
 )
 
 type MockPodResourcesClient struct {
@@ -58,14 +73,14 @@ type MockPodResourcesClient struct {
 
 func (m *MockPodResourcesClient) ListPods() (*podresourcesv1.ListPodResourcesResponse, error) {
 	mockResp := &podresourcesv1.ListPodResourcesResponse{
-		PodResources: []*v1.PodResources{
+		PodResources: []*podresourcesv1.PodResources{
 			{
 				Name:      "test-pod",
 				Namespace: "test-namespace",
-				Containers: []*v1.ContainerResources{
+				Containers: []*podresourcesv1.ContainerResources{
 					{
 						Name: "test-container",
-						Devices: []*v1.ContainerDevices{
+						Devices: []*podresourcesv1.ContainerDevices{
 							{
 								ResourceName: "test-resource",
 								DeviceIds:    []string{"device-id-1", "device-id-2"},
@@ -128,4 +143,21 @@ func TestUpdateMaps(t *testing.T) {
 	assert.Equal(t, len(expectedResourceToPodContainerMap), len(store.resourceToPodContainerMap))
 	assert.Equal(t, expectedContainerInfoToResourcesMap, store.containerInfoToResourcesMap)
 	assert.Equal(t, expectedResourceToPodContainerMap, store.resourceToPodContainerMap)
+}
+
+func TestGets(t *testing.T) {
+	logger, _ := zap.NewDevelopment()
+
+	store := &PodResourcesStore{
+		containerInfoToResourcesMap: expectedContainerInfoToResourcesMap,
+		resourceToPodContainerMap:   expectedResourceToPodContainerMap,
+		lastRefreshed:               time.Now(),
+		ctx:                         context.Background(),
+		cancel:                      func() {},
+		logger:                      logger,
+		podResourcesClient:          &MockPodResourcesClient{},
+	}
+
+	assert.Equal(t, expectedContainerInfo, *store.GetContainerInfo("device-id-1", "test-resource"))
+	assert.Equal(t, expectedResourceInfo, *store.GetResourcesInfo("test-pod", "test-container", "test-namespace"))
 }

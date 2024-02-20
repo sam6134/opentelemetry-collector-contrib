@@ -9,9 +9,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awscontainerinsightreceiver/internal/stores/kubeletutil"
 	"go.uber.org/zap"
-	podresourcesv1 "k8s.io/kubelet/pkg/apis/podresources/v1"
+	v1 "k8s.io/kubelet/pkg/apis/podresources/v1"
+
+	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awscontainerinsightreceiver/internal/stores/kubeletutil"
 )
 
 const (
@@ -37,7 +38,7 @@ type ResourceInfo struct {
 }
 
 type PodResourcesClientInterface interface {
-	ListPods() (*podresourcesv1.ListPodResourcesResponse, error)
+	ListPods() (*v1.ListPodResourcesResponse, error)
 }
 
 type PodResourcesStore struct {
@@ -128,4 +129,20 @@ func (p *PodResourcesStore) updateMaps() {
 			}
 		}
 	}
+}
+
+func (p *PodResourcesStore) GetContainerInfo(deviceID string, resourceName string) *ContainerInfo {
+	key := ResourceInfo{deviceID: deviceID, resourceName: resourceName}
+	if containerInfo, ok := p.resourceToPodContainerMap[key]; ok {
+		return &containerInfo
+	}
+	return nil
+}
+
+func (p *PodResourcesStore) GetResourcesInfo(podName string, containerName string, namespace string) *[]ResourceInfo {
+	key := ContainerInfo{podName: podName, containerName: containerName, namespace: namespace}
+	if resourceInfo, ok := p.containerInfoToResourcesMap[key]; ok {
+		return &resourceInfo
+	}
+	return nil
 }
