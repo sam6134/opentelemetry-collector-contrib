@@ -40,6 +40,7 @@ func NewKubeletClient(kubeIP string, port string, logger *zap.Logger) (*KubeletC
 		APIConfig: k8sconfig.APIConfig{
 			AuthType: k8sconfig.AuthTypeServiceAccount,
 		},
+		InsecureSkipVerify: true,
 	}
 
 	clientProvider, err := kubeletNewClientProvider(endpoint, clientConfig, logger)
