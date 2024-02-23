@@ -116,7 +116,7 @@ func (acir *awsContainerInsightReceiver) Start(ctx context.Context, host compone
 
 		err = acir.initNeuronScraper(simplePrometheusScraperOpts)
 		if err != nil {
-			acir.settings.Logger.Debug("Unable to start dcgm scraper", zap.Error(err))
+			acir.settings.Logger.Debug("Unable to start neuron scraper", zap.Error(err))
 		}
 	}
 	if acir.config.ContainerOrchestrator == ci.ECS {
