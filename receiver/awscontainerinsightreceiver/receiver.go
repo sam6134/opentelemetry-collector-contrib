@@ -9,7 +9,8 @@ import (
 	"time"
 
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awscontainerinsightreceiver/internal/gpu"
-	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awscontainerinsightreceiver/internal/neuron"
+	nueron "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awscontainerinsightreceiver/internal/neuron"
+	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awscontainerinsightreceiver/internal/prometheusscraper"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/consumer"
 	"go.opentelemetry.io/collector/pdata/pmetric"
@@ -43,7 +44,7 @@ type awsContainerInsightReceiver struct {
 	k8sapiserver         metricsProvider
 	prometheusScraper    *k8sapiserver.PrometheusScraper
 	dcgmScraper          *gpu.DcgmScraper
-	neuronMonitorScraper *neuron.NeuronMonitorScraper
+	neuronMonitorScraper *prometheusscraper.SimplePromethuesScraper
 }
 
 // newAWSContainerInsightReceiver creates the aws container insight receiver with the given parameters.
@@ -100,12 +101,20 @@ func (acir *awsContainerInsightReceiver) Start(ctx context.Context, host compone
 			acir.settings.Logger.Debug("Unable to start kube apiserver prometheus scraper", zap.Error(err))
 		}
 
+		simplePrometheusScraperOpts := prometheusscraper.SimplePromethuesScraperOpts{
+			Ctx:               ctx,
+			TelemetrySettings: acir.settings,
+			Consumer:          acir.nextConsumer,
+			Host:              host,
+			HostInfoProvider:  hostinfo,
+		}
+
 		err = acir.initDcgmScraper(ctx, host, hostinfo)
 		if err != nil {
 			acir.settings.Logger.Debug("Unable to start dcgm scraper", zap.Error(err))
 		}
 
-		err = acir.initNeuronScraper(ctx, host, hostinfo)
+		err = acir.initNeuronScraper(simplePrometheusScraperOpts)
 		if err != nil {
 			acir.settings.Logger.Debug("Unable to start dcgm scraper", zap.Error(err))
 		}
@@ -199,19 +208,13 @@ func (acir *awsContainerInsightReceiver) initDcgmScraper(ctx context.Context, ho
 	return err
 }
 
-func (acir *awsContainerInsightReceiver) initNeuronScraper(ctx context.Context, host component.Host, hostinfo *hostInfo.Info) error {
+func (acir *awsContainerInsightReceiver) initNeuronScraper(opts prometheusscraper.SimplePromethuesScraperOpts) error {
 	if !acir.config.EnableNeuronMetric {
 		return nil
 	}
 
 	var err error
-	acir.neuronMonitorScraper, err = neuron.NewNeuronMonitorScraper(neuron.NeuronMonitorScraperOpts{
-		Ctx:               ctx,
-		TelemetrySettings: acir.settings,
-		Consumer:          acir.nextConsumer,
-		Host:              host,
-		HostInfoProvider:  hostinfo,
-	})
+	acir.neuronMonitorScraper, err = prometheusscraper.NewSimplePromethuesScraper(opts, nueron.GetNueronScrapeConfig(opts))
 	return err
 }
 
