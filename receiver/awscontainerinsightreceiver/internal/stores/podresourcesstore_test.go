@@ -98,11 +98,11 @@ var (
 		},
 	}
 
-	listPodResourcesResponseEmptyPodResources = &podresourcesv1.ListPodResourcesResponse{
+	listPodResourcesResponseWithEmptyPodResources = &podresourcesv1.ListPodResourcesResponse{
 		PodResources: []*podresourcesv1.PodResources{},
 	}
 
-	listPodResourcesResponseEmptyResponse = &podresourcesv1.ListPodResourcesResponse{}
+	listPodResourcesResponseWithEmptyResponse = &podresourcesv1.ListPodResourcesResponse{}
 )
 
 type MockPodResourcesClient struct {
@@ -174,7 +174,7 @@ func TestGets(t *testing.T) {
 }
 
 func TestGetsWhenThereAreNoPods(t *testing.T) {
-	store := constructPodResourcesStore(make(map[ContainerInfo][]ResourceInfo), make(map[ResourceInfo]ContainerInfo), listPodResourcesResponseEmptyPodResources, nil)
+	store := constructPodResourcesStore(make(map[ContainerInfo][]ResourceInfo), make(map[ResourceInfo]ContainerInfo), listPodResourcesResponseWithEmptyPodResources, nil)
 	store.updateMaps()
 
 	assert.Equal(t, 0, len(store.containerInfoToResourcesMap))
@@ -191,8 +191,8 @@ func TestGetsWhenThereAreNoPods(t *testing.T) {
 	}
 }
 
-func TestGetsWhenPodReourcesResponseIsEmpty(t *testing.T) {
-	store := constructPodResourcesStore(make(map[ContainerInfo][]ResourceInfo), make(map[ResourceInfo]ContainerInfo), listPodResourcesResponseEmptyResponse, nil)
+func TestGetsWhenPodResourcesResponseIsEmpty(t *testing.T) {
+	store := constructPodResourcesStore(make(map[ContainerInfo][]ResourceInfo), make(map[ResourceInfo]ContainerInfo), listPodResourcesResponseWithEmptyResponse, nil)
 	store.updateMaps()
 
 	assert.Equal(t, 0, len(store.containerInfoToResourcesMap))
@@ -209,8 +209,8 @@ func TestGetsWhenPodReourcesResponseIsEmpty(t *testing.T) {
 	}
 }
 
-func TestGetsWhenPodReourcesThrowsError(t *testing.T) {
-	store := constructPodResourcesStore(make(map[ContainerInfo][]ResourceInfo), make(map[ResourceInfo]ContainerInfo), listPodResourcesResponseEmptyResponse, fmt.Errorf("mocked behavior"))
+func TestGetsWhenPodResourcesThrowsError(t *testing.T) {
+	store := constructPodResourcesStore(make(map[ContainerInfo][]ResourceInfo), make(map[ResourceInfo]ContainerInfo), listPodResourcesResponseWithEmptyResponse, fmt.Errorf("mocked behavior"))
 	store.updateMaps()
 
 	assert.Equal(t, 0, len(store.containerInfoToResourcesMap))
