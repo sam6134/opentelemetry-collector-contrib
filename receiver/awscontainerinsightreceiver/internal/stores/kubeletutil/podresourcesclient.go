@@ -22,23 +22,31 @@ const (
 
 type PodResourcesClient struct {
 	delegateClient podresourcesapi.PodResourcesListerClient
+	conn           *grpc.ClientConn
 }
 
 func NewPodResourcesClient() (*PodResourcesClient, error) {
 	podResourcesClient := &PodResourcesClient{}
 
-	conn, cleanup, err := podResourcesClient.connectToServer(socketPath)
+	conn, err := podResourcesClient.connectToServer(socketPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to server: %w", err)
 	}
-	defer cleanup()
 
 	podResourcesClient.delegateClient = podresourcesapi.NewPodResourcesListerClient(conn)
+	podResourcesClient.conn = conn
 
 	return podResourcesClient, nil
 }
 
-func (p *PodResourcesClient) connectToServer(socket string) (*grpc.ClientConn, func(), error) {
+func (p *PodResourcesClient) connectToServer(socket string) (*grpc.ClientConn, error) {
+	_, err := os.Stat(socket)
+	if os.IsNotExist(err) {
+		return nil, fmt.Errorf("socket path does not exist: %s", socket)
+	} else if err != nil {
+		return nil, fmt.Errorf("failed to check socket path: %w", err)
+	}
+
 	ctx, cancel := context.WithTimeout(context.Background(), connectionTimeout)
 	defer cancel()
 
@@ -53,20 +61,13 @@ func (p *PodResourcesClient) connectToServer(socket string) (*grpc.ClientConn, f
 	)
 
 	if err != nil {
-		return nil, func() {}, fmt.Errorf("failure connecting to '%s': %w", socket, err)
+		return nil, fmt.Errorf("failure connecting to '%s': %w", socket, err)
 	}
 
-	return conn, func() { conn.Close() }, nil
+	return conn, nil
 }
 
 func (p *PodResourcesClient) ListPods() (*podresourcesapi.ListPodResourcesResponse, error) {
-	_, err := os.Stat(socketPath)
-	if os.IsNotExist(err) {
-		return nil, fmt.Errorf("socket path does not exist: %s", socketPath)
-	} else if err != nil {
-		return nil, fmt.Errorf("failed to check socket path: %w", err)
-	}
-
 	ctx, cancel := context.WithTimeout(context.Background(), connectionTimeout)
 	defer cancel()
 
@@ -76,4 +77,8 @@ func (p *PodResourcesClient) ListPods() (*podresourcesapi.ListPodResourcesRespon
 	}
 
 	return resp, nil
+}
+
+func (p *PodResourcesClient) Shutdown() {
+	p.conn.Close()
 }

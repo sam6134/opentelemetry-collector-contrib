@@ -5,6 +5,7 @@ package stores // import "github.com/open-telemetry/opentelemetry-collector-cont
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -66,13 +67,8 @@ var (
 			deviceID:     "device-id-2",
 		},
 	}
-)
 
-type MockPodResourcesClient struct {
-}
-
-func (m *MockPodResourcesClient) ListPods() (*podresourcesv1.ListPodResourcesResponse, error) {
-	mockResp := &podresourcesv1.ListPodResourcesResponse{
+	listPodResourcesResponse = &podresourcesv1.ListPodResourcesResponse{
 		PodResources: []*podresourcesv1.PodResources{
 			{
 				Name:      "test-pod",
@@ -89,9 +85,38 @@ func (m *MockPodResourcesClient) ListPods() (*podresourcesv1.ListPodResourcesRes
 					},
 				},
 			},
+			{
+				Name:      "test-pod-no-device",
+				Namespace: "test-namespace-no-device",
+				Containers: []*podresourcesv1.ContainerResources{
+					{
+						Name:    "test-container-no-device",
+						Devices: []*podresourcesv1.ContainerDevices{},
+					},
+				},
+			},
 		},
 	}
-	return mockResp, nil
+
+	listPodResourcesResponseEmptyPodResources = &podresourcesv1.ListPodResourcesResponse{
+		PodResources: []*podresourcesv1.PodResources{},
+	}
+
+	listPodResourcesResponseEmptyResponse = &podresourcesv1.ListPodResourcesResponse{}
+)
+
+type MockPodResourcesClient struct {
+	response       *podresourcesv1.ListPodResourcesResponse
+	err            error
+	shutdownCalled bool
+}
+
+func (m *MockPodResourcesClient) ListPods() (*podresourcesv1.ListPodResourcesResponse, error) {
+	return m.response, m.err
+}
+
+func (m *MockPodResourcesClient) Shutdown() {
+	m.shutdownCalled = true
 }
 
 func TestNewPodResourcesStore(t *testing.T) {
@@ -103,17 +128,7 @@ func TestNewPodResourcesStore(t *testing.T) {
 }
 
 func TestRefreshTick(t *testing.T) {
-	logger, _ := zap.NewDevelopment()
-
-	store := &PodResourcesStore{
-		containerInfoToResourcesMap: make(map[ContainerInfo][]ResourceInfo),
-		resourceToPodContainerMap:   make(map[ResourceInfo]ContainerInfo),
-		lastRefreshed:               time.Now(),
-		ctx:                         context.Background(),
-		cancel:                      func() {},
-		logger:                      logger,
-		podResourcesClient:          &MockPodResourcesClient{},
-	}
+	store := constructPodResourcesStore(make(map[ContainerInfo][]ResourceInfo), make(map[ResourceInfo]ContainerInfo), listPodResourcesResponse, nil)
 
 	store.lastRefreshed = time.Now().Add(-time.Hour)
 
@@ -122,19 +137,19 @@ func TestRefreshTick(t *testing.T) {
 	assert.True(t, store.lastRefreshed.After(time.Now().Add(-time.Hour)), "lastRefreshed should have been updated")
 }
 
+func TestShutdown(t *testing.T) {
+	store := constructPodResourcesStore(make(map[ContainerInfo][]ResourceInfo), make(map[ResourceInfo]ContainerInfo), listPodResourcesResponse, nil)
+
+	mockClient := &MockPodResourcesClient{listPodResourcesResponse, nil, false}
+	store.podResourcesClient = mockClient
+
+	store.Shutdown()
+
+	assert.True(t, mockClient.shutdownCalled, "Shutdown method of the client should have been called")
+}
+
 func TestUpdateMaps(t *testing.T) {
-	logger, _ := zap.NewDevelopment()
-
-	store := &PodResourcesStore{
-		containerInfoToResourcesMap: make(map[ContainerInfo][]ResourceInfo),
-		resourceToPodContainerMap:   make(map[ResourceInfo]ContainerInfo),
-		lastRefreshed:               time.Now(),
-		ctx:                         context.Background(),
-		cancel:                      func() {},
-		logger:                      logger,
-		podResourcesClient:          &MockPodResourcesClient{},
-	}
-
+	store := constructPodResourcesStore(make(map[ContainerInfo][]ResourceInfo), make(map[ResourceInfo]ContainerInfo), listPodResourcesResponse, nil)
 	store.updateMaps()
 
 	assert.NotNil(t, store.containerInfoToResourcesMap)
@@ -146,18 +161,81 @@ func TestUpdateMaps(t *testing.T) {
 }
 
 func TestGets(t *testing.T) {
-	logger, _ := zap.NewDevelopment()
+	store := constructPodResourcesStore(make(map[ContainerInfo][]ResourceInfo), make(map[ResourceInfo]ContainerInfo), listPodResourcesResponse, nil)
+	store.updateMaps()
 
-	store := &PodResourcesStore{
-		containerInfoToResourcesMap: expectedContainerInfoToResourcesMap,
-		resourceToPodContainerMap:   expectedResourceToPodContainerMap,
+	assert.Equal(t, expectedContainerInfo, *store.GetContainerInfo("device-id-1", "test-resource"))
+	assert.Equal(t, expectedResourceInfo, *store.GetResourcesInfo("test-pod", "test-container", "test-namespace"))
+
+	actualResourceInfo := store.GetResourcesInfo("test-pod-no-device", "test-container-no-device", "test-namespace-no-device")
+	if actualResourceInfo != nil {
+		t.Errorf("Expected GetResourcesInfo to return nil for an unexpected key, but got %v", actualResourceInfo)
+	}
+}
+
+func TestGetsWhenThereAreNoPods(t *testing.T) {
+	store := constructPodResourcesStore(make(map[ContainerInfo][]ResourceInfo), make(map[ResourceInfo]ContainerInfo), listPodResourcesResponseEmptyPodResources, nil)
+	store.updateMaps()
+
+	assert.Equal(t, 0, len(store.containerInfoToResourcesMap))
+	assert.Equal(t, 0, len(store.resourceToPodContainerMap))
+
+	actualContainerInfo := store.GetContainerInfo("device-id-1", "test-resource")
+	if actualContainerInfo != nil {
+		t.Errorf("Expected GetContainerInfo to return nil for an unexpected key, but got %v", actualContainerInfo)
+	}
+
+	actualResourceInfo := store.GetResourcesInfo("test-pod", "test-container", "test-namespace")
+	if actualResourceInfo != nil {
+		t.Errorf("Expected GetResourcesInfo to return nil for an unexpected key, but got %v", actualResourceInfo)
+	}
+}
+
+func TestGetsWhenPodReourcesResponseIsEmpty(t *testing.T) {
+	store := constructPodResourcesStore(make(map[ContainerInfo][]ResourceInfo), make(map[ResourceInfo]ContainerInfo), listPodResourcesResponseEmptyResponse, nil)
+	store.updateMaps()
+
+	assert.Equal(t, 0, len(store.containerInfoToResourcesMap))
+	assert.Equal(t, 0, len(store.resourceToPodContainerMap))
+
+	actualContainerInfo := store.GetContainerInfo("device-id-1", "test-resource")
+	if actualContainerInfo != nil {
+		t.Errorf("Expected GetContainerInfo to return nil for an unexpected key, but got %v", actualContainerInfo)
+	}
+
+	actualResourceInfo := store.GetResourcesInfo("test-pod", "test-container", "test-namespace")
+	if actualResourceInfo != nil {
+		t.Errorf("Expected GetResourcesInfo to return nil for an unexpected key, but got %v", actualResourceInfo)
+	}
+}
+
+func TestGetsWhenPodReourcesThrowsError(t *testing.T) {
+	store := constructPodResourcesStore(make(map[ContainerInfo][]ResourceInfo), make(map[ResourceInfo]ContainerInfo), listPodResourcesResponseEmptyResponse, fmt.Errorf("mocked behavior"))
+	store.updateMaps()
+
+	assert.Equal(t, 0, len(store.containerInfoToResourcesMap))
+	assert.Equal(t, 0, len(store.resourceToPodContainerMap))
+
+	actualContainerInfo := store.GetContainerInfo("device-id-1", "test-resource")
+	if actualContainerInfo != nil {
+		t.Errorf("Expected GetContainerInfo to return nil for an unexpected key, but got %v", actualContainerInfo)
+	}
+
+	actualResourceInfo := store.GetResourcesInfo("test-pod", "test-container", "test-namespace")
+	if actualResourceInfo != nil {
+		t.Errorf("Expected GetResourcesInfo to return nil for an unexpected key, but got %v", actualResourceInfo)
+	}
+}
+
+func constructPodResourcesStore(containerToDevices map[ContainerInfo][]ResourceInfo, deviceToContainer map[ResourceInfo]ContainerInfo, podResourcesResponse *podresourcesv1.ListPodResourcesResponse, podResourcesError error) *PodResourcesStore {
+	logger, _ := zap.NewDevelopment()
+	return &PodResourcesStore{
+		containerInfoToResourcesMap: containerToDevices,
+		resourceToPodContainerMap:   deviceToContainer,
 		lastRefreshed:               time.Now(),
 		ctx:                         context.Background(),
 		cancel:                      func() {},
 		logger:                      logger,
-		podResourcesClient:          &MockPodResourcesClient{},
+		podResourcesClient:          &MockPodResourcesClient{podResourcesResponse, podResourcesError, false},
 	}
-
-	assert.Equal(t, expectedContainerInfo, *store.GetContainerInfo("device-id-1", "test-resource"))
-	assert.Equal(t, expectedResourceInfo, *store.GetResourcesInfo("test-pod", "test-container", "test-namespace"))
 }

@@ -16,7 +16,6 @@ import (
 )
 
 const (
-	socketPath        = "/var/lib/kubelet/pod-resources/kubelet.sock"
 	connectionTimeout = 10 * time.Second
 	taskTimeout       = 10 * time.Second
 )
@@ -39,6 +38,7 @@ type ResourceInfo struct {
 
 type PodResourcesClientInterface interface {
 	ListPods() (*v1.ListPodResourcesResponse, error)
+	Shutdown()
 }
 
 type PodResourcesStore struct {
@@ -145,4 +145,9 @@ func (p *PodResourcesStore) GetResourcesInfo(podName string, containerName strin
 		return &resourceInfo
 	}
 	return nil
+}
+
+func (p *PodResourcesStore) Shutdown() {
+	p.podResourcesClient.Shutdown()
+	p.cancel()
 }
