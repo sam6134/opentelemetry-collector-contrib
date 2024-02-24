@@ -16,8 +16,7 @@ import (
 )
 
 const (
-	connectionTimeout = 10 * time.Second
-	taskTimeout       = 10 * time.Second
+	taskTimeout = 10 * time.Second
 )
 
 var (
@@ -44,6 +43,7 @@ type PodResourcesClientInterface interface {
 type PodResourcesStore struct {
 	containerInfoToResourcesMap map[ContainerInfo][]ResourceInfo
 	resourceToPodContainerMap   map[ResourceInfo]ContainerInfo
+	resourceNameSet             map[string]struct{}
 	lastRefreshed               time.Time
 	ctx                         context.Context
 	cancel                      context.CancelFunc
@@ -58,6 +58,7 @@ func NewPodResourcesStore(logger *zap.Logger) *PodResourcesStore {
 		instance = &PodResourcesStore{
 			containerInfoToResourcesMap: make(map[ContainerInfo][]ResourceInfo),
 			resourceToPodContainerMap:   make(map[ResourceInfo]ContainerInfo),
+			resourceNameSet:             make(map[string]struct{}),
 			lastRefreshed:               time.Now(),
 			ctx:                         ctx,
 			cancel:                      cancel,
@@ -123,8 +124,11 @@ func (p *PodResourcesStore) updateMaps() {
 						resourceName: device.GetResourceName(),
 						deviceID:     deviceID,
 					}
-					p.containerInfoToResourcesMap[containerInfo] = append(p.containerInfoToResourcesMap[containerInfo], resourceInfo)
-					p.resourceToPodContainerMap[resourceInfo] = containerInfo
+					_, found := p.resourceNameSet[resourceInfo.resourceName]
+					if found {
+						p.containerInfoToResourcesMap[containerInfo] = append(p.containerInfoToResourcesMap[containerInfo], resourceInfo)
+						p.resourceToPodContainerMap[resourceInfo] = containerInfo
+					}
 				}
 			}
 		}
@@ -147,7 +151,11 @@ func (p *PodResourcesStore) GetResourcesInfo(podName string, containerName strin
 	return nil
 }
 
+func (p *PodResourcesStore) AddResourceName(resourceName string) {
+	p.resourceNameSet[resourceName] = struct{}{}
+}
+
 func (p *PodResourcesStore) Shutdown() {
-	p.podResourcesClient.Shutdown()
 	p.cancel()
+	p.podResourcesClient.Shutdown()
 }

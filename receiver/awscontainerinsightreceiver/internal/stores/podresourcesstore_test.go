@@ -14,83 +14,102 @@ import (
 	podresourcesv1 "k8s.io/kubelet/pkg/apis/podresources/v1"
 )
 
+const (
+	defaultResourceName          = "Resource-1"
+	defaultPodName               = "Pod-1"
+	defaultNamespace             = "Namespace-1"
+	defaultContainerName         = "Container-1"
+	defaultDeviceID1             = "Device-1"
+	defaultDeviceID2             = "Device-2"
+	defaultDeviceID3             = "Device-3"
+	defaultDeviceID4             = "Device-4"
+	defaultResourceNameSkipped   = "Resource-Skipped"
+	defaultContainerNameNoDevice = "Container-NoDevice"
+	defaultNamespaceNoDevice     = "Namespace-NoDevice"
+	defaultPodNameNoDevice       = "Pod-NoDevice"
+)
+
 var (
 	expectedContainerInfoToResourcesMap = map[ContainerInfo][]ResourceInfo{
 		{
-			podName:       "test-pod",
-			containerName: "test-container",
-			namespace:     "test-namespace",
+			podName:       defaultPodName,
+			containerName: defaultContainerName,
+			namespace:     defaultNamespace,
 		}: {
 			{
-				resourceName: "test-resource",
-				deviceID:     "device-id-1",
+				resourceName: defaultResourceName,
+				deviceID:     defaultDeviceID1,
 			},
 			{
-				resourceName: "test-resource",
-				deviceID:     "device-id-2",
+				resourceName: defaultResourceName,
+				deviceID:     defaultDeviceID2,
 			},
 		},
 	}
 
 	expectedResourceToPodContainerMap = map[ResourceInfo]ContainerInfo{
 		{
-			resourceName: "test-resource",
-			deviceID:     "device-id-1",
+			resourceName: defaultResourceName,
+			deviceID:     defaultDeviceID1,
 		}: {
-			podName:       "test-pod",
-			containerName: "test-container",
-			namespace:     "test-namespace",
+			podName:       defaultPodName,
+			containerName: defaultContainerName,
+			namespace:     defaultNamespace,
 		},
 		{
-			resourceName: "test-resource",
-			deviceID:     "device-id-2",
+			resourceName: defaultResourceName,
+			deviceID:     defaultDeviceID2,
 		}: {
-			podName:       "test-pod",
-			containerName: "test-container",
-			namespace:     "test-namespace",
+			podName:       defaultPodName,
+			containerName: defaultContainerName,
+			namespace:     defaultNamespace,
 		},
 	}
 
 	expectedContainerInfo = ContainerInfo{
-		podName:       "test-pod",
-		containerName: "test-container",
-		namespace:     "test-namespace",
+		podName:       defaultPodName,
+		containerName: defaultContainerName,
+		namespace:     defaultNamespace,
 	}
 
 	expectedResourceInfo = []ResourceInfo{
 		{
-			resourceName: "test-resource",
-			deviceID:     "device-id-1",
+			resourceName: defaultResourceName,
+			deviceID:     defaultDeviceID1,
 		},
 		{
-			resourceName: "test-resource",
-			deviceID:     "device-id-2",
+			resourceName: defaultResourceName,
+			deviceID:     defaultDeviceID2,
 		},
 	}
 
 	listPodResourcesResponse = &podresourcesv1.ListPodResourcesResponse{
 		PodResources: []*podresourcesv1.PodResources{
 			{
-				Name:      "test-pod",
-				Namespace: "test-namespace",
+				Name:      defaultPodName,
+				Namespace: defaultNamespace,
 				Containers: []*podresourcesv1.ContainerResources{
 					{
-						Name: "test-container",
+						Name: defaultContainerName,
 						Devices: []*podresourcesv1.ContainerDevices{
 							{
-								ResourceName: "test-resource",
-								DeviceIds:    []string{"device-id-1", "device-id-2"},
+								ResourceName: defaultResourceName,
+								DeviceIds:    []string{defaultDeviceID1, defaultDeviceID2},
+							},
+							{
+								ResourceName: defaultResourceNameSkipped,
+								DeviceIds:    []string{defaultDeviceID3, defaultDeviceID4},
 							},
 						},
 					},
 				},
 			},
 			{
-				Name:      "test-pod-no-device",
-				Namespace: "test-namespace-no-device",
+				Name:      defaultPodNameNoDevice,
+				Namespace: defaultNamespaceNoDevice,
 				Containers: []*podresourcesv1.ContainerResources{
 					{
-						Name:    "test-container-no-device",
+						Name:    defaultContainerNameNoDevice,
 						Devices: []*podresourcesv1.ContainerDevices{},
 					},
 				},
@@ -103,6 +122,10 @@ var (
 	}
 
 	listPodResourcesResponseWithEmptyResponse = &podresourcesv1.ListPodResourcesResponse{}
+
+	resourceNameSet = map[string]struct{}{
+		defaultResourceName: {},
+	}
 )
 
 type MockPodResourcesClient struct {
@@ -164,67 +187,41 @@ func TestGets(t *testing.T) {
 	store := constructPodResourcesStore(make(map[ContainerInfo][]ResourceInfo), make(map[ResourceInfo]ContainerInfo), listPodResourcesResponse, nil)
 	store.updateMaps()
 
-	assert.Equal(t, expectedContainerInfo, *store.GetContainerInfo("device-id-1", "test-resource"))
-	assert.Equal(t, expectedResourceInfo, *store.GetResourcesInfo("test-pod", "test-container", "test-namespace"))
-
-	actualResourceInfo := store.GetResourcesInfo("test-pod-no-device", "test-container-no-device", "test-namespace-no-device")
-	if actualResourceInfo != nil {
-		t.Errorf("Expected GetResourcesInfo to return nil for an unexpected key, but got %v", actualResourceInfo)
-	}
+	assertMapsContainData(t, store)
 }
 
 func TestGetsWhenThereAreNoPods(t *testing.T) {
 	store := constructPodResourcesStore(make(map[ContainerInfo][]ResourceInfo), make(map[ResourceInfo]ContainerInfo), listPodResourcesResponseWithEmptyPodResources, nil)
 	store.updateMaps()
 
-	assert.Equal(t, 0, len(store.containerInfoToResourcesMap))
-	assert.Equal(t, 0, len(store.resourceToPodContainerMap))
-
-	actualContainerInfo := store.GetContainerInfo("device-id-1", "test-resource")
-	if actualContainerInfo != nil {
-		t.Errorf("Expected GetContainerInfo to return nil for an unexpected key, but got %v", actualContainerInfo)
-	}
-
-	actualResourceInfo := store.GetResourcesInfo("test-pod", "test-container", "test-namespace")
-	if actualResourceInfo != nil {
-		t.Errorf("Expected GetResourcesInfo to return nil for an unexpected key, but got %v", actualResourceInfo)
-	}
+	assertMapsDontContainData(t, store)
 }
 
 func TestGetsWhenPodResourcesResponseIsEmpty(t *testing.T) {
 	store := constructPodResourcesStore(make(map[ContainerInfo][]ResourceInfo), make(map[ResourceInfo]ContainerInfo), listPodResourcesResponseWithEmptyResponse, nil)
 	store.updateMaps()
 
-	assert.Equal(t, 0, len(store.containerInfoToResourcesMap))
-	assert.Equal(t, 0, len(store.resourceToPodContainerMap))
-
-	actualContainerInfo := store.GetContainerInfo("device-id-1", "test-resource")
-	if actualContainerInfo != nil {
-		t.Errorf("Expected GetContainerInfo to return nil for an unexpected key, but got %v", actualContainerInfo)
-	}
-
-	actualResourceInfo := store.GetResourcesInfo("test-pod", "test-container", "test-namespace")
-	if actualResourceInfo != nil {
-		t.Errorf("Expected GetResourcesInfo to return nil for an unexpected key, but got %v", actualResourceInfo)
-	}
+	assertMapsDontContainData(t, store)
 }
 
 func TestGetsWhenPodResourcesThrowsError(t *testing.T) {
 	store := constructPodResourcesStore(make(map[ContainerInfo][]ResourceInfo), make(map[ResourceInfo]ContainerInfo), listPodResourcesResponseWithEmptyResponse, fmt.Errorf("mocked behavior"))
 	store.updateMaps()
 
-	assert.Equal(t, 0, len(store.containerInfoToResourcesMap))
-	assert.Equal(t, 0, len(store.resourceToPodContainerMap))
+	assertMapsDontContainData(t, store)
+}
 
-	actualContainerInfo := store.GetContainerInfo("device-id-1", "test-resource")
-	if actualContainerInfo != nil {
-		t.Errorf("Expected GetContainerInfo to return nil for an unexpected key, but got %v", actualContainerInfo)
-	}
+func TestAddResourceName(t *testing.T) {
+	store := constructPodResourcesStore(make(map[ContainerInfo][]ResourceInfo), make(map[ResourceInfo]ContainerInfo), listPodResourcesResponse, nil)
 
-	actualResourceInfo := store.GetResourcesInfo("test-pod", "test-container", "test-namespace")
-	if actualResourceInfo != nil {
-		t.Errorf("Expected GetResourcesInfo to return nil for an unexpected key, but got %v", actualResourceInfo)
-	}
+	store.resourceNameSet = make(map[string]struct{})
+	store.updateMaps()
+	assertMapsDontContainData(t, store)
+
+	// After adding resource to map
+	store.AddResourceName(defaultResourceName)
+	store.updateMaps()
+	assertMapsContainData(t, store)
 }
 
 func constructPodResourcesStore(containerToDevices map[ContainerInfo][]ResourceInfo, deviceToContainer map[ResourceInfo]ContainerInfo, podResourcesResponse *podresourcesv1.ListPodResourcesResponse, podResourcesError error) *PodResourcesStore {
@@ -232,10 +229,39 @@ func constructPodResourcesStore(containerToDevices map[ContainerInfo][]ResourceI
 	return &PodResourcesStore{
 		containerInfoToResourcesMap: containerToDevices,
 		resourceToPodContainerMap:   deviceToContainer,
+		resourceNameSet:             resourceNameSet,
 		lastRefreshed:               time.Now(),
 		ctx:                         context.Background(),
 		cancel:                      func() {},
 		logger:                      logger,
 		podResourcesClient:          &MockPodResourcesClient{podResourcesResponse, podResourcesError, false},
+	}
+}
+
+func assertMapsContainData(t *testing.T, store *PodResourcesStore) {
+	assert.Equal(t, len(expectedContainerInfoToResourcesMap), len(store.containerInfoToResourcesMap))
+	assert.Equal(t, len(expectedResourceToPodContainerMap), len(store.resourceToPodContainerMap))
+
+	assert.Equal(t, expectedContainerInfo, *store.GetContainerInfo(defaultDeviceID1, defaultResourceName))
+	assert.Equal(t, expectedResourceInfo, *store.GetResourcesInfo(defaultPodName, defaultContainerName, defaultNamespace))
+
+	actualResourceInfo := store.GetResourcesInfo(defaultPodNameNoDevice, defaultContainerNameNoDevice, defaultNamespaceNoDevice)
+	if actualResourceInfo != nil {
+		t.Errorf("Expected GetResourcesInfo to return nil for an unexpected key, but got %v", actualResourceInfo)
+	}
+}
+
+func assertMapsDontContainData(t *testing.T, store *PodResourcesStore) {
+	assert.Equal(t, 0, len(store.containerInfoToResourcesMap))
+	assert.Equal(t, 0, len(store.resourceToPodContainerMap))
+
+	actualContainerInfo := store.GetContainerInfo(defaultDeviceID1, defaultResourceName)
+	if actualContainerInfo != nil {
+		t.Errorf("Expected GetContainerInfo to return nil for an unexpected key, but got %v", actualContainerInfo)
+	}
+
+	actualResourceInfo := store.GetResourcesInfo(defaultPodName, defaultContainerName, defaultNamespace)
+	if actualResourceInfo != nil {
+		t.Errorf("Expected GetResourcesInfo to return nil for an unexpected key, but got %v", actualResourceInfo)
 	}
 }
