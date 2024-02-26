@@ -166,6 +166,39 @@ func GetUnitForMetric(metric string) string {
 	return metricToUnitMap[metric]
 }
 
+// ConvertToFieldsAndTags converts OTLP metric to a field containing metric values and a tag containing for decoration
+func ConvertToFieldsAndTags(m pmetric.Metric, logger *zap.Logger) (map[string]any, map[string]string) {
+	fields := make(map[string]any)
+	tags := make(map[string]string)
+	if m.Name() == "" {
+		return fields, tags
+	}
+
+	// value is not needed for label decoration
+	fields[m.Name()] = 0
+
+	var dps pmetric.NumberDataPointSlice
+	switch m.Type() {
+	case pmetric.MetricTypeGauge:
+		dps = m.Gauge().DataPoints()
+	case pmetric.MetricTypeSum:
+		dps = m.Sum().DataPoints()
+	default:
+		logger.Warn("Unsupported metric type", zap.String("metric", m.Name()), zap.String("type", m.Type().String()))
+	}
+
+	// should support metrics with more than 1 datapoints?
+	if dps.Len() > 1 {
+		logger.Warn("Metric with more than 1 datapoint is not supported", zap.String("metric", m.Name()), zap.Int("datapoints", dps.Len()))
+	}
+	attrs := dps.At(0).Attributes()
+	attrs.Range(func(k string, v pcommon.Value) bool {
+		tags[k] = v.Str()
+		return true
+	})
+	return fields, tags
+}
+
 // ConvertToOTLPMetrics converts a field containing metric values and a tag containing the relevant labels to OTLP metrics
 func ConvertToOTLPMetrics(fields map[string]any, tags map[string]string, logger *zap.Logger) pmetric.Metrics {
 	md := pmetric.NewMetrics()
