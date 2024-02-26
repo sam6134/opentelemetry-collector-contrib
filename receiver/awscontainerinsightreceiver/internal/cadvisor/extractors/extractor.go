@@ -8,11 +8,14 @@ import (
 	"time"
 
 	cinfo "github.com/google/cadvisor/info/v1"
+	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awscontainerinsightreceiver/internal/stores"
 	"go.uber.org/zap"
 
 	ci "github.com/open-telemetry/opentelemetry-collector-contrib/internal/aws/containerinsight"
 	awsmetrics "github.com/open-telemetry/opentelemetry-collector-contrib/internal/aws/metrics"
 )
+
+var _ stores.CIMetric = (*CAdvisorMetric)(nil)
 
 func GetStats(info *cinfo.ContainerInfo) *cinfo.ContainerStats {
 	if len(info.Stats) == 0 {

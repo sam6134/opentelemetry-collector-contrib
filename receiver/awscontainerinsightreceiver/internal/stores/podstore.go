@@ -483,7 +483,7 @@ func (p *PodStore) decorateMem(metric CIMetric, pod *corev1.Pod) {
 }
 
 func (p *PodStore) addStatus(metric CIMetric, pod *corev1.Pod) {
-	if metric.GetTag(ci.MetricType) == ci.TypePod {
+	if metric.GetTag(ci.MetricType) == ci.TypePod || metric.GetTag(ci.MetricType) == ci.TypeGpuPod {
 		metric.AddTag(ci.PodStatus, string(pod.Status.Phase))
 
 		if p.includeEnhancedMetrics {
@@ -510,7 +510,7 @@ func (p *PodStore) addStatus(metric CIMetric, pod *corev1.Pod) {
 			}
 			p.setPrevMeasurement(ci.TypePod, podKey, prevPodMeasurement{containersRestarts: curContainerRestarts})
 		}
-	} else if metric.GetTag(ci.MetricType) == ci.TypeContainer {
+	} else if metric.GetTag(ci.MetricType) == ci.TypeContainer || metric.GetTag(ci.MetricType) == ci.TypeGpuContainer {
 		if containerName := metric.GetTag(ci.ContainerNamekey); containerName != "" {
 			for _, containerStatus := range pod.Status.ContainerStatuses {
 				if containerStatus.Name == containerName {

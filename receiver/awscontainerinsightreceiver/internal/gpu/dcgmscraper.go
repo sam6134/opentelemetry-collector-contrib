@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"time"
 
+	ci "github.com/open-telemetry/opentelemetry-collector-contrib/internal/aws/containerinsight"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/config"
 	"github.com/prometheus/prometheus/discovery"
@@ -35,6 +36,7 @@ type DcgmScraper struct {
 	host               component.Host
 	hostInfoProvider   hostInfoProvider
 	prometheusReceiver receiver.Metrics
+	k8sDecorator       Decorator
 	running            bool
 }
 
@@ -44,6 +46,8 @@ type DcgmScraperOpts struct {
 	Consumer          consumer.Metrics
 	Host              component.Host
 	HostInfoProvider  hostInfoProvider
+	K8sDecorator      Decorator
+	Logger            *zap.Logger
 }
 
 type hostInfoProvider interface {
@@ -137,13 +141,6 @@ func NewDcgmScraper(opts DcgmScraperOpts) (*DcgmScraper, error) {
 				Replacement:  "${1}",
 				Action:       relabel.Replace,
 			},
-			{
-				SourceLabels: model.LabelNames{"pod"},
-				TargetLabel:  "PodName",
-				Regex:        relabel.MustNewRegexp("(.+)-(.+)"),
-				Replacement:  "${1}",
-				Action:       relabel.Replace,
-			},
 			// additional k8s podname for service name decoration
 			{
 				SourceLabels: model.LabelNames{"pod"},
@@ -179,8 +176,15 @@ func NewDcgmScraper(opts DcgmScraperOpts) (*DcgmScraper, error) {
 		TelemetrySettings: opts.TelemetrySettings,
 	}
 
+	decoConsumer := decorateConsumer{
+		containerOrchestrator: ci.EKS,
+		nextConsumer:          opts.Consumer,
+		k8sDecorator:          opts.K8sDecorator,
+		logger:                opts.Logger,
+	}
+
 	promFactory := prometheusreceiver.NewFactory()
-	promReceiver, err := promFactory.CreateMetricsReceiver(opts.Ctx, params, &promConfig, opts.Consumer)
+	promReceiver, err := promFactory.CreateMetricsReceiver(opts.Ctx, params, &promConfig, &decoConsumer)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create prometheus receiver: %w", err)
 	}
@@ -191,6 +195,7 @@ func NewDcgmScraper(opts DcgmScraperOpts) (*DcgmScraper, error) {
 		host:               opts.Host,
 		hostInfoProvider:   opts.HostInfoProvider,
 		prometheusReceiver: promReceiver,
+		k8sDecorator:       opts.K8sDecorator,
 	}, nil
 }
 
@@ -205,6 +210,7 @@ func (ds *DcgmScraper) GetMetrics() []pmetric.Metrics {
 		}
 		ds.running = err == nil
 	}
+
 	return nil
 }
 
@@ -215,5 +221,12 @@ func (ds *DcgmScraper) Shutdown() {
 			ds.settings.Logger.Error("Unable to shutdown PrometheusReceiver", zap.Error(err))
 		}
 		ds.running = false
+	}
+
+	if ds.k8sDecorator != nil {
+		err := ds.k8sDecorator.Shutdown()
+		if err != nil {
+			ds.settings.Logger.Error("Unable to shutdown K8sDecorator", zap.Error(err))
+		}
 	}
 }
