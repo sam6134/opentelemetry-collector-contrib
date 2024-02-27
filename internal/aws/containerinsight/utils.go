@@ -191,11 +191,14 @@ func ConvertToFieldsAndTags(m pmetric.Metric, logger *zap.Logger) (map[string]an
 	if dps.Len() == 0 || dps.Len() > 1 {
 		logger.Warn("Metric has either 0 or more than 1 datapoints", zap.String("metric", m.Name()), zap.Int("datapoints", dps.Len()))
 	}
-	attrs := dps.At(0).Attributes()
-	attrs.Range(func(k string, v pcommon.Value) bool {
-		tags[k] = v.AsString()
-		return true
-	})
+
+	if dps.Len() > 0 {
+		attrs := dps.At(0).Attributes()
+		attrs.Range(func(k string, v pcommon.Value) bool {
+			tags[k] = v.AsString()
+			return true
+		})
+	}
 	return fields, tags
 }
 
