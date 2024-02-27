@@ -175,7 +175,7 @@ func ConvertToFieldsAndTags(m pmetric.Metric, logger *zap.Logger) (map[string]an
 	}
 
 	// value is not needed for label decoration
-	fields[m.Name()] = 0
+	fields[m.Name()] = nil
 
 	var dps pmetric.NumberDataPointSlice
 	switch m.Type() {
@@ -188,12 +188,12 @@ func ConvertToFieldsAndTags(m pmetric.Metric, logger *zap.Logger) (map[string]an
 	}
 
 	// should support metrics with more than 1 datapoints?
-	if dps.Len() > 1 {
-		logger.Warn("Metric with more than 1 datapoint is not supported", zap.String("metric", m.Name()), zap.Int("datapoints", dps.Len()))
+	if dps.Len() == 0 || dps.Len() > 1 {
+		logger.Warn("Metric has either 0 or more than 1 datapoints", zap.String("metric", m.Name()), zap.Int("datapoints", dps.Len()))
 	}
 	attrs := dps.At(0).Attributes()
 	attrs.Range(func(k string, v pcommon.Value) bool {
-		tags[k] = v.Str()
+		tags[k] = v.AsString()
 		return true
 	})
 	return fields, tags

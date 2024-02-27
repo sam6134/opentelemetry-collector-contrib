@@ -5,7 +5,6 @@ package gpu
 
 import (
 	"context"
-	"errors"
 
 	ci "github.com/open-telemetry/opentelemetry-collector-contrib/internal/aws/containerinsight"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awscontainerinsightreceiver/internal/stores"
@@ -25,8 +24,6 @@ const (
 	gpuPowerDraw   = "DCGM_FI_DEV_POWER_USAGE"
 )
 
-var _ stores.CIMetric = (*gpuMetric)(nil)
-
 var metricToUnit = map[string]string{
 	gpuUtil:        "Percent",
 	gpuMemUtil:     "Percent",
@@ -43,12 +40,19 @@ type gpuMetric struct {
 	tags map[string]string
 }
 
-func newResourceMetric(mType string, logger *zap.Logger) *gpuMetric {
+func newGpuMetric(mType string) *gpuMetric {
 	metric := &gpuMetric{
 		fields: make(map[string]any),
 		tags:   make(map[string]string),
 	}
 	metric.tags[ci.MetricType] = mType
+	return metric
+}
+
+func newGpuMetricWithData(mType string, fields map[string]any, tags map[string]string) *gpuMetric {
+	metric := newGpuMetric(mType)
+	metric.fields = fields
+	metric.tags = tags
 	return metric
 }
 
@@ -129,15 +133,12 @@ func (dc *decorateConsumer) ConsumeMetrics(ctx context.Context, md pmetric.Metri
 				m := ms.At(k)
 				fields, tags := ci.ConvertToFieldsAndTags(m, dc.logger)
 				maps.Copy(tags, resourceTags)
-				rm := gpuMetric{
-					fields: fields,
-					tags:   tags,
-				}
+				rm := newGpuMetricWithData(ci.TypeGpuContainer, fields, tags)
 				if !rm.HasTag(ci.MetricType) {
 					// force type to be Container to decorate with container level labels
 					rm.AddTag(ci.MetricType, ci.TypeGpuContainer)
 				}
-				dc.decorateMetrics([]*gpuMetric{&rm})
+				dc.decorateMetrics([]*gpuMetric{rm})
 				dc.updateAttributes(m, rm)
 				if unit, ok := metricToUnit[m.Name()]; ok {
 					m.SetUnit(unit)
@@ -167,8 +168,8 @@ func (dc *decorateConsumer) decorateMetrics(metrics []*gpuMetric) []*gpuMetric {
 	return result
 }
 
-func (dc *decorateConsumer) updateAttributes(m pmetric.Metric, gm gpuMetric) {
-	if len(gm.tags) < 1 {
+func (dc *decorateConsumer) updateAttributes(m pmetric.Metric, gm *gpuMetric) {
+	if len(gm.tags) == 0 {
 		return
 	}
 	var dps pmetric.NumberDataPointSlice
@@ -181,7 +182,7 @@ func (dc *decorateConsumer) updateAttributes(m pmetric.Metric, gm gpuMetric) {
 		dc.logger.Warn("Unsupported metric type", zap.String("metric", m.Name()), zap.String("type", m.Type().String()))
 	}
 
-	if dps.Len() < 1 {
+	if dps.Len() == 0 {
 		return
 	}
 	attrs := dps.At(0).Attributes()
@@ -195,10 +196,10 @@ func (dc *decorateConsumer) updateAttributes(m pmetric.Metric, gm gpuMetric) {
 }
 
 func (dc *decorateConsumer) Shutdown() error {
-	var errs error
-
 	if dc.k8sDecorator != nil {
-		errs = errors.Join(errs, dc.k8sDecorator.Shutdown())
+		return dc.k8sDecorator.Shutdown()
 	}
-	return errs
+	return nil
 }
+
+var _ stores.CIMetric = (*gpuMetric)(nil)
