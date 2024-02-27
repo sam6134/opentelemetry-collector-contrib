@@ -109,7 +109,7 @@ func (acir *awsContainerInsightReceiver) Start(ctx context.Context, host compone
 			HostInfoProvider:  hostinfo,
 		}
 
-		err = acir.initDcgmScraper(ctx, host, hostinfo)
+		err = acir.initDcgmScraper(ctx, host, hostinfo, k8sDecorator)
 		if err != nil {
 			acir.settings.Logger.Debug("Unable to start dcgm scraper", zap.Error(err))
 		}
@@ -192,7 +192,7 @@ func (acir *awsContainerInsightReceiver) initPrometheusScraper(ctx context.Conte
 	})
 	return err
 }
-func (acir *awsContainerInsightReceiver) initDcgmScraper(ctx context.Context, host component.Host, hostinfo *hostInfo.Info) error {
+func (acir *awsContainerInsightReceiver) initDcgmScraper(ctx context.Context, host component.Host, hostinfo *hostInfo.Info, decorator *stores.K8sDecorator) error {
 	if !acir.config.EnableGpuMetric {
 		return nil
 	}
@@ -204,6 +204,8 @@ func (acir *awsContainerInsightReceiver) initDcgmScraper(ctx context.Context, ho
 		Consumer:          acir.nextConsumer,
 		Host:              host,
 		HostInfoProvider:  hostinfo,
+		K8sDecorator:      decorator,
+		Logger:            acir.settings.Logger,
 	})
 	return err
 }

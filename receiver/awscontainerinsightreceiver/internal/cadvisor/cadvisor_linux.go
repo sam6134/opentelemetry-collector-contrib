@@ -22,6 +22,7 @@ import (
 	cInfo "github.com/google/cadvisor/info/v1"
 	"github.com/google/cadvisor/manager"
 	"github.com/google/cadvisor/utils/sysfs"
+	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awscontainerinsightreceiver/internal/stores"
 	"go.opentelemetry.io/collector/pdata/pmetric"
 	"go.uber.org/zap"
 
@@ -109,7 +110,7 @@ type EcsInfo interface {
 }
 
 type Decorator interface {
-	Decorate(*extractors.CAdvisorMetric) *extractors.CAdvisorMetric
+	Decorate(stores.CIMetric) stores.CIMetric
 	Shutdown() error
 }
 
@@ -307,7 +308,7 @@ func (c *Cadvisor) decorateMetrics(cadvisormetrics []*extractors.CAdvisorMetric)
 
 			out := c.k8sDecorator.Decorate(m)
 			if out != nil {
-				result = append(result, out)
+				result = append(result, out.(*extractors.CAdvisorMetric))
 			}
 		}
 
