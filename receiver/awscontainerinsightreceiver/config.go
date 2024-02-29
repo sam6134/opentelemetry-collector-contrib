@@ -58,6 +58,6 @@ type Config struct {
 	// The default value is false.
 	EnableControlPlaneMetrics bool `mapstructure:"enable_control_plane_metrics"`
 
-	// EnableGpuMetric toggles GPU monitoring where metrics are scraped from vendor specific sources
-	EnableGpuMetric bool `mapstructure:"gpu_metrics"`
+	// EnableAcceleratedComputingMetric toggles GPU monitoring where metrics are scraped from vendor specific sources
+	EnableAcceleratedComputingMetric bool `mapstructure:"accelerated_computing_metrics"`
 }
