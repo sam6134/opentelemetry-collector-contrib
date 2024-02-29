@@ -7,12 +7,12 @@ import (
 	"context"
 
 	ci "github.com/open-telemetry/opentelemetry-collector-contrib/internal/aws/containerinsight"
+	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awscontainerinsightreceiver/internal/cadvisor/extractors"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awscontainerinsightreceiver/internal/stores"
 	"go.opentelemetry.io/collector/consumer"
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/collector/pdata/pmetric"
 	"go.uber.org/zap"
-	"golang.org/x/exp/maps"
 )
 
 const (
@@ -31,75 +31,6 @@ var metricToUnit = map[string]string{
 	gpuMemTotal:    "Bytes",
 	gpuTemperature: "None",
 	gpuPowerDraw:   "None",
-}
-
-type gpuMetric struct {
-	// key/value pairs that are typed and contain the metric (numerical) data
-	fields map[string]any
-	// key/value string pairs that are used to identify the metrics
-	tags map[string]string
-}
-
-func newGpuMetric(mType string) *gpuMetric {
-	metric := &gpuMetric{
-		fields: make(map[string]any),
-		tags:   make(map[string]string),
-	}
-	metric.tags[ci.MetricType] = mType
-	return metric
-}
-
-func newGpuMetricWithData(mType string, fields map[string]any, tags map[string]string) *gpuMetric {
-	metric := newGpuMetric(mType)
-	metric.fields = fields
-	metric.tags = tags
-	return metric
-}
-
-func (gr *gpuMetric) GetTags() map[string]string {
-	return gr.tags
-}
-
-func (gr *gpuMetric) GetFields() map[string]any {
-	return gr.fields
-}
-
-func (gr *gpuMetric) GetMetricType() string {
-	return gr.tags[ci.MetricType]
-}
-
-func (gr *gpuMetric) AddTags(tags map[string]string) {
-	for k, v := range tags {
-		gr.tags[k] = v
-	}
-}
-
-func (gr *gpuMetric) HasField(key string) bool {
-	return gr.fields[key] != nil
-}
-
-func (gr *gpuMetric) AddField(key string, val any) {
-	gr.fields[key] = val
-}
-
-func (gr *gpuMetric) GetField(key string) any {
-	return gr.fields[key]
-}
-
-func (gr *gpuMetric) HasTag(key string) bool {
-	return gr.tags[key] != ""
-}
-
-func (gr *gpuMetric) AddTag(key, val string) {
-	gr.tags[key] = val
-}
-
-func (gr *gpuMetric) GetTag(key string) string {
-	return gr.tags[key]
-}
-
-func (gr *gpuMetric) RemoveTag(key string) {
-	delete(gr.tags, key)
 }
 
 // GPU decorator acts as an interceptor of metrics before the scraper sends them to the next designated consumer
@@ -132,14 +63,21 @@ func (dc *decorateConsumer) ConsumeMetrics(ctx context.Context, md pmetric.Metri
 			for k := 0; k < ms.Len(); k++ {
 				m := ms.At(k)
 				fields, tags := ci.ConvertToFieldsAndTags(m, dc.logger)
-				maps.Copy(tags, resourceTags)
-				rm := newGpuMetricWithData(ci.TypeGpuContainer, fields, tags)
-				if !rm.HasTag(ci.MetricType) {
-					// force type to be Container to decorate with container level labels
-					rm.AddTag(ci.MetricType, ci.TypeGpuContainer)
+				// copy down resource metrics only when it's missing at datapoint
+				for rtk, rtv := range resourceTags {
+					if _, ok := tags[rtk]; !ok {
+						tags[rtk] = rtv
+					}
 				}
-				dc.decorateMetrics([]*gpuMetric{rm})
-				dc.updateAttributes(m, rm)
+				cim := extractors.NewRawContainerInsightsMetric(ci.TypeGpuContainer, dc.logger)
+				cim.Fields = fields
+				cim.Tags = tags
+				if !cim.HasTag(ci.MetricType) {
+					// force type to be Container to decorate with container level labels
+					cim.AddTag(ci.MetricType, ci.TypeGpuContainer)
+				}
+				dc.decorateMetrics([]*extractors.RawContainerInsightsMetric{cim})
+				dc.updateAttributes(m, cim)
 				if unit, ok := metricToUnit[m.Name()]; ok {
 					m.SetUnit(unit)
 				}
@@ -154,22 +92,22 @@ type Decorator interface {
 	Shutdown() error
 }
 
-func (dc *decorateConsumer) decorateMetrics(metrics []*gpuMetric) []*gpuMetric {
-	var result []*gpuMetric
+func (dc *decorateConsumer) decorateMetrics(metrics []*extractors.RawContainerInsightsMetric) []*extractors.RawContainerInsightsMetric {
+	var result []*extractors.RawContainerInsightsMetric
 	for _, m := range metrics {
 		// add tags for EKS
 		if dc.containerOrchestrator == ci.EKS {
 			out := dc.k8sDecorator.Decorate(m)
 			if out != nil {
-				result = append(result, out.(*gpuMetric))
+				result = append(result, out.(*extractors.RawContainerInsightsMetric))
 			}
 		}
 	}
 	return result
 }
 
-func (dc *decorateConsumer) updateAttributes(m pmetric.Metric, gm *gpuMetric) {
-	if len(gm.tags) == 0 {
+func (dc *decorateConsumer) updateAttributes(m pmetric.Metric, cim *extractors.RawContainerInsightsMetric) {
+	if len(cim.Tags) == 0 {
 		return
 	}
 	var dps pmetric.NumberDataPointSlice
@@ -186,7 +124,7 @@ func (dc *decorateConsumer) updateAttributes(m pmetric.Metric, gm *gpuMetric) {
 		return
 	}
 	attrs := dps.At(0).Attributes()
-	for tk, tv := range gm.tags {
+	for tk, tv := range cim.Tags {
 		// type gets set with metrictransformer while duplicating metrics at different resource levels
 		if tk == ci.MetricType {
 			continue
@@ -201,5 +139,3 @@ func (dc *decorateConsumer) Shutdown() error {
 	}
 	return nil
 }
-
-var _ stores.CIMetric = (*gpuMetric)(nil)

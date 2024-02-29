@@ -20,6 +20,7 @@ const (
 
 	PodStatus       = "pod_status"
 	ContainerStatus = "container_status"
+	GpuDevice       = "GpuDevice"
 
 	ContainerStatusReason          = "container_status_reason"
 	ContainerLastTerminationReason = "container_last_termination_reason"

@@ -38,8 +38,8 @@ type podKey struct {
 	namespace    string
 }
 
-func processContainers(cInfos []*cInfo.ContainerInfo, mInfo extractors.CPUMemInfoProvider, containerOrchestrator string, logger *zap.Logger) []*extractors.CAdvisorMetric {
-	var metrics []*extractors.CAdvisorMetric
+func processContainers(cInfos []*cInfo.ContainerInfo, mInfo extractors.CPUMemInfoProvider, containerOrchestrator string, logger *zap.Logger) []*extractors.RawContainerInsightsMetric {
+	var metrics []*extractors.RawContainerInsightsMetric
 	podKeys := make(map[string]podKey)
 
 	// first iteration of container infos processes individual container info and
@@ -88,8 +88,8 @@ func processContainers(cInfos []*cInfo.ContainerInfo, mInfo extractors.CPUMemInf
 }
 
 // processContainers get metrics for individual container and gather information for pod so we can look it up later.
-func processContainer(info *cInfo.ContainerInfo, mInfo extractors.CPUMemInfoProvider, containerOrchestrator string, logger *zap.Logger) ([]*extractors.CAdvisorMetric, *podKey, error) {
-	var result []*extractors.CAdvisorMetric
+func processContainer(info *cInfo.ContainerInfo, mInfo extractors.CPUMemInfoProvider, containerOrchestrator string, logger *zap.Logger) ([]*extractors.RawContainerInsightsMetric, *podKey, error) {
+	var result []*extractors.RawContainerInsightsMetric
 	var pKey *podKey
 
 	if isContainerInContainer(info.Name) {
@@ -165,8 +165,8 @@ func processContainer(info *cInfo.ContainerInfo, mInfo extractors.CPUMemInfoProv
 	return result, pKey, nil
 }
 
-func processPod(info *cInfo.ContainerInfo, mInfo extractors.CPUMemInfoProvider, podKeys map[string]podKey, logger *zap.Logger) []*extractors.CAdvisorMetric {
-	var result []*extractors.CAdvisorMetric
+func processPod(info *cInfo.ContainerInfo, mInfo extractors.CPUMemInfoProvider, podKeys map[string]podKey, logger *zap.Logger) []*extractors.RawContainerInsightsMetric {
+	var result []*extractors.RawContainerInsightsMetric
 	if isContainerInContainer(info.Name) {
 		logger.Debug("drop metric because it's nested container", zap.String("name", info.Name))
 		return result

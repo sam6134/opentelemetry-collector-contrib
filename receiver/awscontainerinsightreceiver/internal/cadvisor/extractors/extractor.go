@@ -15,8 +15,6 @@ import (
 	awsmetrics "github.com/open-telemetry/opentelemetry-collector-contrib/internal/aws/metrics"
 )
 
-var _ stores.CIMetric = (*CAdvisorMetric)(nil)
-
 func GetStats(info *cinfo.ContainerInfo) *cinfo.ContainerStats {
 	if len(info.Stats) == 0 {
 		return nil
@@ -32,88 +30,90 @@ type CPUMemInfoProvider interface {
 
 type MetricExtractor interface {
 	HasValue(*cinfo.ContainerInfo) bool
-	GetValue(info *cinfo.ContainerInfo, mInfo CPUMemInfoProvider, containerType string) []*CAdvisorMetric
+	GetValue(info *cinfo.ContainerInfo, mInfo CPUMemInfoProvider, containerType string) []*RawContainerInsightsMetric
 	Shutdown() error
 }
 
-type CAdvisorMetric struct {
+type RawContainerInsightsMetric struct {
 	// source of the metric for debugging merge conflict
-	cgroupPath string
+	ContainerName string
 	// key/value pairs that are typed and contain the metric (numerical) data
-	fields map[string]any
+	Fields map[string]any
 	// key/value string pairs that are used to identify the metrics
-	tags map[string]string
+	Tags map[string]string
 
-	logger *zap.Logger
+	Logger *zap.Logger
 }
 
-func newCadvisorMetric(mType string, logger *zap.Logger) *CAdvisorMetric {
-	metric := &CAdvisorMetric{
-		fields: make(map[string]any),
-		tags:   make(map[string]string),
-		logger: logger,
+var _ stores.CIMetric = (*RawContainerInsightsMetric)(nil)
+
+func NewRawContainerInsightsMetric(mType string, logger *zap.Logger) *RawContainerInsightsMetric {
+	metric := &RawContainerInsightsMetric{
+		Fields: make(map[string]any),
+		Tags:   make(map[string]string),
+		Logger: logger,
 	}
-	metric.tags[ci.MetricType] = mType
+	metric.Tags[ci.MetricType] = mType
 	return metric
 }
 
-func (c *CAdvisorMetric) GetTags() map[string]string {
-	return c.tags
+func (c *RawContainerInsightsMetric) GetTags() map[string]string {
+	return c.Tags
 }
 
-func (c *CAdvisorMetric) GetFields() map[string]any {
-	return c.fields
+func (c *RawContainerInsightsMetric) GetFields() map[string]any {
+	return c.Fields
 }
 
-func (c *CAdvisorMetric) GetMetricType() string {
-	return c.tags[ci.MetricType]
+func (c *RawContainerInsightsMetric) GetMetricType() string {
+	return c.Tags[ci.MetricType]
 }
 
-func (c *CAdvisorMetric) AddTags(tags map[string]string) {
+func (c *RawContainerInsightsMetric) AddTags(tags map[string]string) {
 	for k, v := range tags {
-		c.tags[k] = v
+		c.Tags[k] = v
 	}
 }
 
-func (c *CAdvisorMetric) HasField(key string) bool {
-	return c.fields[key] != nil
+func (c *RawContainerInsightsMetric) HasField(key string) bool {
+	return c.Fields[key] != nil
 }
 
-func (c *CAdvisorMetric) AddField(key string, val any) {
-	c.fields[key] = val
+func (c *RawContainerInsightsMetric) AddField(key string, val any) {
+	c.Fields[key] = val
 }
 
-func (c *CAdvisorMetric) GetField(key string) any {
-	return c.fields[key]
+func (c *RawContainerInsightsMetric) GetField(key string) any {
+	return c.Fields[key]
 }
 
-func (c *CAdvisorMetric) HasTag(key string) bool {
-	return c.tags[key] != ""
+func (c *RawContainerInsightsMetric) HasTag(key string) bool {
+	return c.Tags[key] != ""
 }
 
-func (c *CAdvisorMetric) AddTag(key, val string) {
-	c.tags[key] = val
+func (c *RawContainerInsightsMetric) AddTag(key, val string) {
+	c.Tags[key] = val
 }
 
-func (c *CAdvisorMetric) GetTag(key string) string {
-	return c.tags[key]
+func (c *RawContainerInsightsMetric) GetTag(key string) string {
+	return c.Tags[key]
 }
 
-func (c *CAdvisorMetric) RemoveTag(key string) {
-	delete(c.tags, key)
+func (c *RawContainerInsightsMetric) RemoveTag(key string) {
+	delete(c.Tags, key)
 }
 
-func (c *CAdvisorMetric) Merge(src *CAdvisorMetric) {
-	// If there is any conflict, keep the fields with earlier timestamp
-	for k, v := range src.fields {
-		if _, ok := c.fields[k]; ok {
-			c.logger.Debug(fmt.Sprintf("metric being merged has conflict in fields, src: %v, dest: %v \n", *src, *c))
-			c.logger.Debug("metric being merged has conflict in fields", zap.String("src", src.cgroupPath), zap.String("dest", c.cgroupPath))
-			if c.tags[ci.Timestamp] < src.tags[ci.Timestamp] {
+func (c *RawContainerInsightsMetric) Merge(src *RawContainerInsightsMetric) {
+	// If there is any conflict, keep the Fields with earlier timestamp
+	for k, v := range src.Fields {
+		if _, ok := c.Fields[k]; ok {
+			c.Logger.Debug(fmt.Sprintf("metric being merged has conflict in Fields, src: %v, dest: %v \n", *src, *c))
+			c.Logger.Debug("metric being merged has conflict in Fields", zap.String("src", src.ContainerName), zap.String("dest", c.ContainerName))
+			if c.Tags[ci.Timestamp] < src.Tags[ci.Timestamp] {
 				continue
 			}
 		}
-		c.fields[k] = v
+		c.Fields[k] = v
 	}
 }
 
@@ -139,9 +139,9 @@ func assignRateValueToField(rateCalculator *awsmetrics.MetricCalculator, fields 
 }
 
 // MergeMetrics merges an array of cadvisor metrics based on common metric keys
-func MergeMetrics(metrics []*CAdvisorMetric) []*CAdvisorMetric {
-	result := make([]*CAdvisorMetric, 0, len(metrics))
-	metricMap := make(map[string]*CAdvisorMetric)
+func MergeMetrics(metrics []*RawContainerInsightsMetric) []*RawContainerInsightsMetric {
+	result := make([]*RawContainerInsightsMetric, 0, len(metrics))
+	metricMap := make(map[string]*RawContainerInsightsMetric)
 	for _, metric := range metrics {
 		if metricKey := getMetricKey(metric); metricKey != "" {
 			if mergedMetric, ok := metricMap[metricKey]; ok {
@@ -161,7 +161,7 @@ func MergeMetrics(metrics []*CAdvisorMetric) []*CAdvisorMetric {
 }
 
 // return MetricKey for merge-able metrics
-func getMetricKey(metric *CAdvisorMetric) string {
+func getMetricKey(metric *RawContainerInsightsMetric) string {
 	metricType := metric.GetMetricType()
 	var metricKey string
 	switch metricType {
@@ -176,7 +176,7 @@ func getMetricKey(metric *CAdvisorMetric) string {
 		metricKey = fmt.Sprintf("metricType:%s,podId:%s", ci.TypePod, metric.GetTags()[ci.PodIDKey])
 	case ci.TypeContainer:
 		// merge cpu, memory metric for type Container
-		metricKey = fmt.Sprintf("metricType:%s,podId:%s,containerName:%s", ci.TypeContainer, metric.GetTags()[ci.PodIDKey], metric.GetTags()[ci.ContainerNamekey])
+		metricKey = fmt.Sprintf("metricType:%s,podId:%s,ContainerName:%s", ci.TypeContainer, metric.GetTags()[ci.PodIDKey], metric.GetTags()[ci.ContainerNamekey])
 	case ci.TypeInstanceDiskIO:
 		// merge io_serviced, io_service_bytes for type InstanceDiskIO
 		metricKey = fmt.Sprintf("metricType:%s,device:%s", ci.TypeInstanceDiskIO, metric.GetTags()[ci.DiskDev])

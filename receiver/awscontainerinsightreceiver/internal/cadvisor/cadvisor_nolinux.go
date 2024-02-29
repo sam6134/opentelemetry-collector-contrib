@@ -26,7 +26,7 @@ type Cadvisor struct {
 }
 
 type Decorator interface {
-	Decorate(*extractors.CAdvisorMetric) *extractors.CAdvisorMetric
+	Decorate(*extractors.RawContainerInsightsMetric) *extractors.RawContainerInsightsMetric
 	Shutdown() error
 }
 

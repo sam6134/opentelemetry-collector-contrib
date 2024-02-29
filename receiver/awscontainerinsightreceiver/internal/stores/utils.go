@@ -20,7 +20,6 @@ const (
 	// https://github.com/kubernetes/apimachinery/blob/master/pkg/util/rand/rand.go#L83
 	kubeAllowedStringAlphaNums = "bcdfghjklmnpqrstvwxz2456789"
 	cronJobAllowedString       = "0123456789"
-	gpuNvidiaKey               = "nvidia.com/gpu"
 )
 
 func createPodKeyFromMetaData(pod *corev1.Pod) string {
@@ -123,7 +122,7 @@ func TagMetricSource(metric CIMetric) {
 	case ci.TypeContainerDiskIO:
 		sources = append(sources, []string{"cadvisor"}...)
 	case ci.TypeGpuContainer:
-		sources = append(sources, []string{"pod", "calculated"}...)
+		sources = append(sources, []string{"dcgm", "pod", "calculated"}...)
 	}
 
 	if len(sources) > 0 {

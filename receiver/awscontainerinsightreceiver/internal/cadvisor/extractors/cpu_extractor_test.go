@@ -22,7 +22,7 @@ func TestCPUStats(t *testing.T) {
 	containerType := containerinsight.TypeContainer
 	extractor := NewCPUMetricExtractor(nil)
 
-	var cMetrics []*CAdvisorMetric
+	var cMetrics []*RawContainerInsightsMetric
 	if extractor.HasValue(result[0]) {
 		cMetrics = extractor.GetValue(result[0], MockCPUMemInfo, containerType)
 	}

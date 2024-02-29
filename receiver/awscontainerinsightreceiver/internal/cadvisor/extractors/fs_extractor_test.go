@@ -21,7 +21,7 @@ func TestFSStats(t *testing.T) {
 	containerType := containerinsight.TypeContainer
 	extractor := NewFileSystemMetricExtractor(nil)
 
-	var cMetrics []*CAdvisorMetric
+	var cMetrics []*RawContainerInsightsMetric
 	if extractor.HasValue(result[0]) {
 		cMetrics = extractor.GetValue(result[0], nil, containerType)
 	}
@@ -125,15 +125,15 @@ func TestFSStatsWithAllowList(t *testing.T) {
 	containerType := containerinsight.TypeContainer
 	extractor := NewFileSystemMetricExtractor(nil)
 
-	var cMetrics []*CAdvisorMetric
+	var cMetrics []*RawContainerInsightsMetric
 	if extractor.HasValue(result[0]) {
 		cMetrics = extractor.GetValue(result[0], nil, containerType)
 	}
 
 	// There are 3 valid device names which pass the allowlist in testAllowList json.
 	assert.Equal(t, 3, len(cMetrics))
-	assert.Equal(t, "tmpfs", cMetrics[0].tags["device"])
-	assert.Equal(t, "/dev/xvda1", cMetrics[1].tags["device"])
-	assert.Equal(t, "overlay", cMetrics[2].tags["device"])
+	assert.Equal(t, "tmpfs", cMetrics[0].Tags["device"])
+	assert.Equal(t, "/dev/xvda1", cMetrics[1].Tags["device"])
+	assert.Equal(t, "overlay", cMetrics[2].Tags["device"])
 
 }
