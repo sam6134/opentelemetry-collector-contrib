@@ -6,11 +6,11 @@ package kubeletutil // import "github.com/open-telemetry/opentelemetry-collector
 import (
 	"context"
 	"fmt"
+	"google.golang.org/grpc"
 	"net"
 	"os"
 	"time"
 
-	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	podresourcesapi "k8s.io/kubelet/pkg/apis/podresources/v1"
 )
@@ -29,12 +29,12 @@ func NewPodResourcesClient() (*PodResourcesClient, error) {
 	podResourcesClient := &PodResourcesClient{}
 
 	conn, err := podResourcesClient.connectToServer(socketPath)
+	podResourcesClient.conn = conn
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to server: %w", err)
 	}
 
 	podResourcesClient.delegateClient = podresourcesapi.NewPodResourcesListerClient(conn)
-	podResourcesClient.conn = conn
 
 	return podResourcesClient, nil
 }
@@ -80,5 +80,8 @@ func (p *PodResourcesClient) ListPods() (*podresourcesapi.ListPodResourcesRespon
 }
 
 func (p *PodResourcesClient) Shutdown() {
-	p.conn.Close()
+	err := p.conn.Close()
+	if err != nil {
+		return
+	}
 }
