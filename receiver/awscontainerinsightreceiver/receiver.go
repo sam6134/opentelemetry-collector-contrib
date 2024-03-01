@@ -8,13 +8,14 @@ import (
 	"errors"
 	"time"
 
-	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awscontainerinsightreceiver/internal/gpu"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/consumer"
 	"go.opentelemetry.io/collector/pdata/pmetric"
 	"go.opentelemetry.io/collector/receiver"
 	"go.uber.org/zap"
 	"k8s.io/client-go/rest"
+
+	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awscontainerinsightreceiver/internal/gpu"
 
 	ci "github.com/open-telemetry/opentelemetry-collector-contrib/internal/aws/containerinsight"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/internal/aws/k8s/k8sclient"
@@ -92,15 +93,14 @@ func (acir *awsContainerInsightReceiver) Start(ctx context.Context, host compone
 		if err != nil {
 			return err
 		}
-			err = acir.initPrometheusScraper(ctx, host, hostinfo, leaderElection)
-			if err != nil {
-				acir.settings.Logger.Debug("Unable to start kube apiserver prometheus scraper", zap.Error(err))
-			}
+		err = acir.initPrometheusScraper(ctx, host, hostinfo, leaderElection)
+		if err != nil {
+			acir.settings.Logger.Debug("Unable to start kube apiserver prometheus scraper", zap.Error(err))
+		}
 
-			err = acir.initDcgmScraper(ctx, host, hostinfo, k8sDecorator)
-			if err != nil {
-				acir.settings.Logger.Debug("Unable to start dcgm scraper", zap.Error(err))
-			}
+		err = acir.initDcgmScraper(ctx, host, hostinfo, k8sDecorator)
+		if err != nil {
+			acir.settings.Logger.Debug("Unable to start dcgm scraper", zap.Error(err))
 		}
 	}
 	if acir.config.ContainerOrchestrator == ci.ECS {

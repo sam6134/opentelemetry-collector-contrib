@@ -8,6 +8,7 @@ import (
 	"time"
 
 	cinfo "github.com/google/cadvisor/info/v1"
+
 	ci "github.com/open-telemetry/opentelemetry-collector-contrib/internal/aws/containerinsight"
 	awsmetrics "github.com/open-telemetry/opentelemetry-collector-contrib/internal/aws/metrics"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awscontainerinsightreceiver/internal/stores"
@@ -32,7 +33,7 @@ type MetricExtractor interface {
 	Shutdown() error
 }
 
-func NewFloat64RateCalculator() awsmetrics.MetricCalculator {
+func newFloat64RateCalculator() awsmetrics.MetricCalculator {
 	return awsmetrics.NewMetricCalculator(func(prev *awsmetrics.MetricValue, val any, timestamp time.Time) (any, bool) {
 		if prev != nil {
 			deltaNs := timestamp.Sub(prev.Timestamp)

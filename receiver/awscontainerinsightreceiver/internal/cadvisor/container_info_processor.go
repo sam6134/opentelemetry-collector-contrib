@@ -17,6 +17,7 @@ import (
 
 	ci "github.com/open-telemetry/opentelemetry-collector-contrib/internal/aws/containerinsight"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awscontainerinsightreceiver/internal/cadvisor/extractors"
+	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awscontainerinsightreceiver/internal/stores"
 )
 
 const (
@@ -38,8 +39,8 @@ type podKey struct {
 	namespace    string
 }
 
-func processContainers(cInfos []*cInfo.ContainerInfo, mInfo extractors.CPUMemInfoProvider, containerOrchestrator string, logger *zap.Logger) []*extractors.RawContainerInsightsMetric {
-	var metrics []*extractors.RawContainerInsightsMetric
+func processContainers(cInfos []*cInfo.ContainerInfo, mInfo extractors.CPUMemInfoProvider, containerOrchestrator string, logger *zap.Logger) []*stores.RawContainerInsightsMetric {
+	var metrics []*stores.RawContainerInsightsMetric
 	podKeys := make(map[string]podKey)
 
 	// first iteration of container infos processes individual container info and
@@ -88,8 +89,8 @@ func processContainers(cInfos []*cInfo.ContainerInfo, mInfo extractors.CPUMemInf
 }
 
 // processContainers get metrics for individual container and gather information for pod so we can look it up later.
-func processContainer(info *cInfo.ContainerInfo, mInfo extractors.CPUMemInfoProvider, containerOrchestrator string, logger *zap.Logger) ([]*extractors.RawContainerInsightsMetric, *podKey, error) {
-	var result []*extractors.RawContainerInsightsMetric
+func processContainer(info *cInfo.ContainerInfo, mInfo extractors.CPUMemInfoProvider, containerOrchestrator string, logger *zap.Logger) ([]*stores.RawContainerInsightsMetric, *podKey, error) {
+	var result []*stores.RawContainerInsightsMetric
 	var pKey *podKey
 
 	if isContainerInContainer(info.Name) {
@@ -165,8 +166,8 @@ func processContainer(info *cInfo.ContainerInfo, mInfo extractors.CPUMemInfoProv
 	return result, pKey, nil
 }
 
-func processPod(info *cInfo.ContainerInfo, mInfo extractors.CPUMemInfoProvider, podKeys map[string]podKey, logger *zap.Logger) []*extractors.RawContainerInsightsMetric {
-	var result []*extractors.RawContainerInsightsMetric
+func processPod(info *cInfo.ContainerInfo, mInfo extractors.CPUMemInfoProvider, podKeys map[string]podKey, logger *zap.Logger) []*stores.RawContainerInsightsMetric {
+	var result []*stores.RawContainerInsightsMetric
 	if isContainerInContainer(info.Name) {
 		logger.Debug("drop metric because it's nested container", zap.String("name", info.Name))
 		return result

@@ -22,12 +22,12 @@ import (
 	cInfo "github.com/google/cadvisor/info/v1"
 	"github.com/google/cadvisor/manager"
 	"github.com/google/cadvisor/utils/sysfs"
-	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awscontainerinsightreceiver/internal/stores"
 	"go.opentelemetry.io/collector/pdata/pmetric"
 	"go.uber.org/zap"
 
 	ci "github.com/open-telemetry/opentelemetry-collector-contrib/internal/aws/containerinsight"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awscontainerinsightreceiver/internal/cadvisor/extractors"
+	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awscontainerinsightreceiver/internal/stores"
 )
 
 // The amount of time for which to keep stats in memory.
@@ -198,7 +198,7 @@ func (c *Cadvisor) addEbsVolumeInfo(tags map[string]string, ebsVolumeIdsUsedAsPV
 	}
 }
 
-func (c *Cadvisor) addECSMetrics(cadvisormetrics []*extractors.RawContainerInsightsMetric) {
+func (c *Cadvisor) addECSMetrics(cadvisormetrics []*stores.RawContainerInsightsMetric) {
 
 	if len(cadvisormetrics) == 0 {
 		c.logger.Warn("cadvisor can't collect any metrics!")
@@ -257,9 +257,9 @@ func addECSResources(tags map[string]string) {
 	}
 }
 
-func (c *Cadvisor) decorateMetrics(cadvisormetrics []*extractors.RawContainerInsightsMetric) []*extractors.RawContainerInsightsMetric {
+func (c *Cadvisor) decorateMetrics(cadvisormetrics []*stores.RawContainerInsightsMetric) []*stores.RawContainerInsightsMetric {
 	ebsVolumeIdsUsedAsPV := c.hostInfo.ExtractEbsIDsUsedByKubernetes()
-	var result []*extractors.RawContainerInsightsMetric
+	var result []*stores.RawContainerInsightsMetric
 	for _, m := range cadvisormetrics {
 		tags := m.GetTags()
 		c.addEbsVolumeInfo(tags, ebsVolumeIdsUsedAsPV)
@@ -308,7 +308,7 @@ func (c *Cadvisor) decorateMetrics(cadvisormetrics []*extractors.RawContainerIns
 
 			out := c.k8sDecorator.Decorate(m)
 			if out != nil {
-				result = append(result, out.(*extractors.RawContainerInsightsMetric))
+				result = append(result, out.(*stores.RawContainerInsightsMetric))
 			}
 		}
 
