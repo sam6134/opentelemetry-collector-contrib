@@ -6,6 +6,7 @@ package extractors
 import (
 	"testing"
 
+	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awscontainerinsightreceiver/internal/stores"
 	"github.com/stretchr/testify/require"
 
 	"github.com/open-telemetry/opentelemetry-collector-contrib/internal/aws/containerinsight"
@@ -20,7 +21,7 @@ func TestMemStats(t *testing.T) {
 	containerType := containerinsight.TypeContainer
 	extractor := NewMemMetricExtractor(nil)
 
-	var cMetrics []*RawContainerInsightsMetric
+	var cMetrics []*stores.RawContainerInsightsMetric
 	if extractor.HasValue(result[0]) {
 		cMetrics = extractor.GetValue(result[0], MockCPUMemInfo, containerType)
 	}

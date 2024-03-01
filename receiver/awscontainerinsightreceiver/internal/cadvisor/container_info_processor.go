@@ -123,9 +123,9 @@ func processContainer(info *cInfo.ContainerInfo, mInfo extractors.CPUMemInfoProv
 		podPath := path.Dir(info.Name)
 		pKey = &podKey{cgroupPath: podPath, podName: podName, podID: podID, namespace: namespace}
 
-		tags[ci.PodIDKey] = podID
-		tags[ci.K8sPodNameKey] = podName
-		tags[ci.K8sNamespace] = namespace
+		tags[ci.AttributePodID] = podID
+		tags[ci.AttributeK8sPodName] = podName
+		tags[ci.AttributeK8sNamespace] = namespace
 		switch containerName {
 		// For docker, pause container name is set to POD while containerd does not set it.
 		// See https://github.com/aws/amazon-cloudwatch-agent/issues/188
@@ -134,9 +134,9 @@ func processContainer(info *cInfo.ContainerInfo, mInfo extractors.CPUMemInfoProv
 			// other pod info like CPU, Mem are dealt within in processPod.
 			containerType = ci.TypeInfraContainer
 		default:
-			tags[ci.ContainerNamekey] = containerName
+			tags[ci.AttributeContainerName] = containerName
 			containerID := path.Base(info.Name)
-			tags[ci.ContainerIDkey] = containerID
+			tags[ci.AttributeContainerID] = containerID
 			pKey.containerIds = []string{containerID}
 			containerType = ci.TypeContainer
 			// TODO(pvasir): wait for upstream fix https://github.com/google/cadvisor/issues/2785
@@ -178,9 +178,9 @@ func processPod(info *cInfo.ContainerInfo, mInfo extractors.CPUMemInfoProvider, 
 	}
 
 	tags := map[string]string{}
-	tags[ci.PodIDKey] = podKey.podID
-	tags[ci.K8sPodNameKey] = podKey.podName
-	tags[ci.K8sNamespace] = podKey.namespace
+	tags[ci.AttributePodID] = podKey.podID
+	tags[ci.AttributeK8sPodName] = podKey.podName
+	tags[ci.AttributeK8sNamespace] = podKey.namespace
 
 	tags[ci.Timestamp] = strconv.FormatInt(extractors.GetStats(info).Timestamp.UnixNano(), 10)
 

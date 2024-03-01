@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	cinfo "github.com/google/cadvisor/info/v1"
+	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awscontainerinsightreceiver/internal/stores"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/open-telemetry/opentelemetry-collector-contrib/internal/aws/containerinsight"
@@ -21,7 +22,7 @@ func TestFSStats(t *testing.T) {
 	containerType := containerinsight.TypeContainer
 	extractor := NewFileSystemMetricExtractor(nil)
 
-	var cMetrics []*RawContainerInsightsMetric
+	var cMetrics []*stores.RawContainerInsightsMetric
 	if extractor.HasValue(result[0]) {
 		cMetrics = extractor.GetValue(result[0], nil, containerType)
 	}
@@ -125,7 +126,7 @@ func TestFSStatsWithAllowList(t *testing.T) {
 	containerType := containerinsight.TypeContainer
 	extractor := NewFileSystemMetricExtractor(nil)
 
-	var cMetrics []*RawContainerInsightsMetric
+	var cMetrics []*stores.RawContainerInsightsMetric
 	if extractor.HasValue(result[0]) {
 		cMetrics = extractor.GetValue(result[0], nil, containerType)
 	}

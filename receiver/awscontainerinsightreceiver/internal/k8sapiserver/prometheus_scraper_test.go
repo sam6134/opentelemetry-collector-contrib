@@ -60,8 +60,10 @@ func (m mockConsumer) ConsumeMetrics(_ context.Context, md pmetric.Metrics) erro
 	assert.Equal(m.t, 1, md.ResourceMetrics().Len())
 
 	scopeMetrics := md.ResourceMetrics().At(0).ScopeMetrics().At(0).Metrics()
+	fmt.Printf("===== count %d\n", scopeMetrics.Len())
 	for i := 0; i < scopeMetrics.Len(); i++ {
 		metric := scopeMetrics.At(i)
+		fmt.Printf("===== count %v\n", metric.Name())
 		if metric.Name() == "http_connected_total" {
 			assert.Equal(m.t, float64(15), metric.Sum().DataPoints().At(0).DoubleValue())
 			*m.httpConnected = true

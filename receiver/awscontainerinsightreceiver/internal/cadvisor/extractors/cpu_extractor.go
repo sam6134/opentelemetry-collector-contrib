@@ -5,6 +5,7 @@ package extractors // import "github.com/open-telemetry/opentelemetry-collector-
 
 import (
 	cInfo "github.com/google/cadvisor/info/v1"
+	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awscontainerinsightreceiver/internal/stores"
 	"go.uber.org/zap"
 
 	ci "github.com/open-telemetry/opentelemetry-collector-contrib/internal/aws/containerinsight"
@@ -24,8 +25,8 @@ func (c *CPUMetricExtractor) HasValue(info *cInfo.ContainerInfo) bool {
 	return info.Spec.HasCpu
 }
 
-func (c *CPUMetricExtractor) GetValue(info *cInfo.ContainerInfo, mInfo CPUMemInfoProvider, containerType string) []*RawContainerInsightsMetric {
-	var metrics []*RawContainerInsightsMetric
+func (c *CPUMetricExtractor) GetValue(info *cInfo.ContainerInfo, mInfo CPUMemInfoProvider, containerType string) []*stores.RawContainerInsightsMetric {
+	var metrics []*stores.RawContainerInsightsMetric
 	// Skip infra container and handle node, pod, other containers in pod
 	if containerType == ci.TypeInfraContainer {
 		return metrics
@@ -33,7 +34,7 @@ func (c *CPUMetricExtractor) GetValue(info *cInfo.ContainerInfo, mInfo CPUMemInf
 
 	// When there is more than one stats point, always use the last one
 	curStats := GetStats(info)
-	metric := NewRawContainerInsightsMetric(containerType, c.logger)
+	metric := stores.NewRawContainerInsightsMetric(containerType, c.logger)
 	metric.ContainerName = info.Name
 	multiplier := float64(decimalToMillicores)
 	assignRateValueToField(&c.rateCalculator, metric.Fields, ci.MetricName(containerType, ci.CPUTotal), info.Name, float64(curStats.Cpu.Usage.Total), curStats.Timestamp, multiplier)

@@ -177,7 +177,7 @@ func (acir *awsContainerInsightReceiver) initPrometheusScraper(ctx context.Conte
 	return err
 }
 func (acir *awsContainerInsightReceiver) initDcgmScraper(ctx context.Context, host component.Host, hostinfo *hostInfo.Info, decorator *stores.K8sDecorator) error {
-	if !acir.config.EnableAcceleratedComputingMetric {
+	if !acir.config.EnableAcceleratedComputeMetrics {
 		return nil
 	}
 

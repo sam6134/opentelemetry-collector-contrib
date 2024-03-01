@@ -7,6 +7,7 @@ import (
 	"time"
 
 	cinfo "github.com/google/cadvisor/info/v1"
+	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awscontainerinsightreceiver/internal/stores"
 	"go.uber.org/zap"
 
 	ci "github.com/open-telemetry/opentelemetry-collector-contrib/internal/aws/containerinsight"
@@ -22,13 +23,13 @@ func (m *MemMetricExtractor) HasValue(info *cinfo.ContainerInfo) bool {
 	return info.Spec.HasMemory
 }
 
-func (m *MemMetricExtractor) GetValue(info *cinfo.ContainerInfo, mInfo CPUMemInfoProvider, containerType string) []*RawContainerInsightsMetric {
-	var metrics []*RawContainerInsightsMetric
+func (m *MemMetricExtractor) GetValue(info *cinfo.ContainerInfo, mInfo CPUMemInfoProvider, containerType string) []*stores.RawContainerInsightsMetric {
+	var metrics []*stores.RawContainerInsightsMetric
 	if containerType == ci.TypeInfraContainer {
 		return metrics
 	}
 
-	metric := NewRawContainerInsightsMetric(containerType, m.logger)
+	metric := stores.NewRawContainerInsightsMetric(containerType, m.logger)
 	metric.ContainerName = info.Name
 	curStats := GetStats(info)
 

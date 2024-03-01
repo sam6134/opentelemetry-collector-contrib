@@ -8,12 +8,13 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awscontainerinsightreceiver/internal/stores"
 	"github.com/stretchr/testify/assert"
 )
 
 func AssertContainsTaggedFloat(
 	t *testing.T,
-	cadvisorMetric *RawContainerInsightsMetric,
+	cadvisorMetric *stores.RawContainerInsightsMetric,
 	field string,
 	expectedValue float64,
 	delta float64,
@@ -32,14 +33,14 @@ func AssertContainsTaggedFloat(
 		}
 	}
 	msg := fmt.Sprintf(
-		"Could not find field \"%s\" with requested Tags within %f of %f, Actual: %f",
+		"Could not find field \"%s\" with requested tags within %f of %f, Actual: %f",
 		field, delta, expectedValue, actualValue)
 	assert.Fail(t, msg)
 }
 
 func AssertContainsTaggedInt(
 	t *testing.T,
-	cadvisorMetric *RawContainerInsightsMetric,
+	cadvisorMetric *stores.RawContainerInsightsMetric,
 	field string,
 	expectedValue int64,
 ) {
@@ -52,14 +53,14 @@ func AssertContainsTaggedInt(
 		}
 	}
 	msg := fmt.Sprintf(
-		"Could not find field \"%s\" with requested Tags with value: %v, Actual: %v",
+		"Could not find field \"%s\" with requested tags with value: %v, Actual: %v",
 		field, expectedValue, actualValue)
 	assert.Fail(t, msg)
 }
 
 func AssertContainsTaggedUint(
 	t *testing.T,
-	cadvisorMetric *RawContainerInsightsMetric,
+	cadvisorMetric *stores.RawContainerInsightsMetric,
 	field string,
 	expectedValue uint64,
 ) {
@@ -72,14 +73,14 @@ func AssertContainsTaggedUint(
 		}
 	}
 	msg := fmt.Sprintf(
-		"Could not find field \"%s\" with requested Tags with value: %v, Actual: %v",
+		"Could not find field \"%s\" with requested tags with value: %v, Actual: %v",
 		field, expectedValue, actualValue)
 	assert.Fail(t, msg)
 }
 
 func AssertContainsTaggedField(
 	t *testing.T,
-	cadvisorMetric *RawContainerInsightsMetric,
+	cadvisorMetric *stores.RawContainerInsightsMetric,
 	expectedFields map[string]any,
 	expectedTags map[string]string,
 ) {

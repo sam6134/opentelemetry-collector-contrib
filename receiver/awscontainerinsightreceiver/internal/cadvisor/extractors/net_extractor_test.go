@@ -6,6 +6,7 @@ package extractors
 import (
 	"testing"
 
+	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awscontainerinsightreceiver/internal/stores"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -19,7 +20,7 @@ func TestNetStats(t *testing.T) {
 
 	containerType := ci.TypeNode
 	extractor := NewNetMetricExtractor(nil)
-	var cMetrics []*RawContainerInsightsMetric
+	var cMetrics []*stores.RawContainerInsightsMetric
 	if extractor.HasValue(result[0]) {
 		cMetrics = extractor.GetValue(result[0], nil, containerType)
 	}

@@ -62,6 +62,7 @@ func (m mockDecorator) Shutdown() error {
 
 type mockConsumer struct {
 	t        *testing.T
+	called   *bool
 	expected map[string]struct {
 		value  float64
 		labels map[string]string
@@ -81,6 +82,7 @@ func (m mockConsumer) ConsumeMetrics(_ context.Context, md pmetric.Metrics) erro
 	scopeMetrics := md.ResourceMetrics().At(0).ScopeMetrics().At(0).Metrics()
 	for i := 0; i < scopeMetrics.Len(); i++ {
 		metric := scopeMetrics.At(i)
+
 		// skip prometheus metadata metrics including "up"
 		if !strings.HasPrefix(metric.Name(), "DCGM") {
 			continue
@@ -96,6 +98,7 @@ func (m mockConsumer) ConsumeMetrics(_ context.Context, md pmetric.Metrics) erro
 		scrapedMetricCnt += 1
 	}
 	assert.Equal(m.t, len(m.expected), scrapedMetricCnt)
+	*m.called = true
 	return nil
 }
 
@@ -143,36 +146,35 @@ func TestNewDcgmScraperEndToEnd(t *testing.T) {
 		"DCGM_FI_DEV_GPU_TEMP": {
 			value: 65,
 			labels: map[string]string{
-				ci.NodeNameKey:      "hostname",
-				ci.K8sNamespace:     "kube-system",
-				ci.ClusterNameKey:   dummyClusterName,
-				ci.InstanceID:       dummyInstanceId,
-				ci.FullPodNameKey:   "fullname-hash",
-				ci.K8sPodNameKey:    "fullname-hash",
-				ci.ContainerNamekey: "main",
-				ci.GpuDevice:        "nvidia0",
+				ci.NodeNameKey:            "hostname",
+				ci.AttributeK8sNamespace:  "kube-system",
+				ci.ClusterNameKey:         dummyClusterName,
+				ci.InstanceID:             dummyInstanceId,
+				ci.AttributeFullPodName:   "fullname-hash",
+				ci.AttributeK8sPodName:    "fullname-hash",
+				ci.AttributeContainerName: "main",
+				ci.AttributeGpuDevice:     "nvidia0",
 			},
 		},
 		"DCGM_FI_DEV_GPU_UTIL": {
 			value: 100,
 			labels: map[string]string{
-				ci.NodeNameKey:      "hostname",
-				ci.K8sNamespace:     "kube-system",
-				ci.ClusterNameKey:   dummyClusterName,
-				ci.InstanceID:       dummyInstanceId,
-				ci.FullPodNameKey:   "fullname-hash",
-				ci.K8sPodNameKey:    "fullname-hash",
-				ci.ContainerNamekey: "main",
-				ci.GpuDevice:        "nvidia0",
+				ci.NodeNameKey:            "hostname",
+				ci.AttributeK8sNamespace:  "kube-system",
+				ci.ClusterNameKey:         dummyClusterName,
+				ci.InstanceID:             dummyInstanceId,
+				ci.AttributeFullPodName:   "fullname-hash",
+				ci.AttributeK8sPodName:    "fullname-hash",
+				ci.AttributeContainerName: "main",
+				ci.AttributeGpuDevice:     "nvidia0",
 			},
 		},
-		"up": {
-			value:  1,
-			labels: map[string]string{},
-		},
 	}
+
+	consumerCalled := false
 	consumer := mockConsumer{
 		t:        t,
+		called:   &consumerCalled,
 		expected: expected,
 	}
 
@@ -182,7 +184,7 @@ func TestNewDcgmScraperEndToEnd(t *testing.T) {
 	scraper, err := NewDcgmScraper(DcgmScraperOpts{
 		Ctx:               context.TODO(),
 		TelemetrySettings: settings,
-		Consumer:          mockConsumer{},
+		Consumer:          consumer,
 		Host:              componenttest.NewNopHost(),
 		HostInfoProvider:  mockHostInfoProvider{},
 		K8sDecorator:      mockDecorator{},
@@ -252,6 +254,8 @@ func TestNewDcgmScraperEndToEnd(t *testing.T) {
 	// wait for 2 scrapes, one initiated by us, another by the new scraper process
 	mp.Wg.Wait()
 	mp.Wg.Wait()
+	// make sure the consumer is called at scraping interval
+	assert.True(t, consumerCalled)
 }
 
 func TestDcgmScraperJobName(t *testing.T) {

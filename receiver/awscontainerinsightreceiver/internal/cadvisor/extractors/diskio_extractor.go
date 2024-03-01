@@ -9,6 +9,7 @@ import (
 	"time"
 
 	cInfo "github.com/google/cadvisor/info/v1"
+	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awscontainerinsightreceiver/internal/stores"
 	"go.uber.org/zap"
 
 	ci "github.com/open-telemetry/opentelemetry-collector-contrib/internal/aws/containerinsight"
@@ -24,8 +25,8 @@ func (d *DiskIOMetricExtractor) HasValue(info *cInfo.ContainerInfo) bool {
 	return info.Spec.HasDiskIo
 }
 
-func (d *DiskIOMetricExtractor) GetValue(info *cInfo.ContainerInfo, _ CPUMemInfoProvider, containerType string) []*RawContainerInsightsMetric {
-	var metrics []*RawContainerInsightsMetric
+func (d *DiskIOMetricExtractor) GetValue(info *cInfo.ContainerInfo, _ CPUMemInfoProvider, containerType string) []*stores.RawContainerInsightsMetric {
+	var metrics []*stores.RawContainerInsightsMetric
 	if containerType != ci.TypeNode && containerType != ci.TypeInstance {
 		return metrics
 	}
@@ -36,12 +37,12 @@ func (d *DiskIOMetricExtractor) GetValue(info *cInfo.ContainerInfo, _ CPUMemInfo
 	return metrics
 }
 
-func (d *DiskIOMetricExtractor) extractIoMetrics(curStatsSet []cInfo.PerDiskStats, namePrefix string, containerType string, infoName string, curTime time.Time) []*RawContainerInsightsMetric {
-	var metrics []*RawContainerInsightsMetric
+func (d *DiskIOMetricExtractor) extractIoMetrics(curStatsSet []cInfo.PerDiskStats, namePrefix string, containerType string, infoName string, curTime time.Time) []*stores.RawContainerInsightsMetric {
+	var metrics []*stores.RawContainerInsightsMetric
 	expectedKey := []string{ci.DiskIOAsync, ci.DiskIOSync, ci.DiskIORead, ci.DiskIOWrite, ci.DiskIOTotal}
 	for _, cur := range curStatsSet {
 		curDevName := devName(cur)
-		metric := NewRawContainerInsightsMetric(getDiskIOMetricType(containerType, d.logger), d.logger)
+		metric := stores.NewRawContainerInsightsMetric(getDiskIOMetricType(containerType, d.logger), d.logger)
 		metric.Tags[ci.DiskDev] = curDevName
 		for _, key := range expectedKey {
 			if curVal, curOk := cur.Stats[key]; curOk {

@@ -7,6 +7,7 @@ import (
 	"regexp"
 
 	cinfo "github.com/google/cadvisor/info/v1"
+	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awscontainerinsightreceiver/internal/stores"
 	"go.uber.org/zap"
 
 	ci "github.com/open-telemetry/opentelemetry-collector-contrib/internal/aws/containerinsight"
@@ -23,17 +24,17 @@ func (f *FileSystemMetricExtractor) HasValue(info *cinfo.ContainerInfo) bool {
 	return info.Spec.HasFilesystem
 }
 
-func (f *FileSystemMetricExtractor) GetValue(info *cinfo.ContainerInfo, _ CPUMemInfoProvider, containerType string) []*RawContainerInsightsMetric {
+func (f *FileSystemMetricExtractor) GetValue(info *cinfo.ContainerInfo, _ CPUMemInfoProvider, containerType string) []*stores.RawContainerInsightsMetric {
 	if containerType == ci.TypePod || containerType == ci.TypeInfraContainer {
 		return nil
 	}
 
 	containerType = getFSMetricType(containerType, f.logger)
 	stats := GetStats(info)
-	metrics := make([]*RawContainerInsightsMetric, 0, len(stats.Filesystem))
+	metrics := make([]*stores.RawContainerInsightsMetric, 0, len(stats.Filesystem))
 
 	for _, v := range stats.Filesystem {
-		metric := NewRawContainerInsightsMetric(containerType, f.logger)
+		metric := stores.NewRawContainerInsightsMetric(containerType, f.logger)
 		if v.Device == "" {
 			continue
 		}

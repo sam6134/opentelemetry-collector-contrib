@@ -6,6 +6,7 @@ package extractors
 import (
 	"testing"
 
+	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awscontainerinsightreceiver/internal/stores"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -21,7 +22,7 @@ func TestDiskIOStats(t *testing.T) {
 	containerType := containerinsight.TypeNode
 	extractor := NewDiskIOMetricExtractor(nil)
 
-	var cMetrics []*RawContainerInsightsMetric
+	var cMetrics []*stores.RawContainerInsightsMetric
 	if extractor.HasValue(result[0]) {
 		cMetrics = extractor.GetValue(result[0], nil, containerType)
 	}

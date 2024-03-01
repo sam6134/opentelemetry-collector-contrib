@@ -166,16 +166,17 @@ func GetUnitForMetric(metric string) string {
 	return metricToUnitMap[metric]
 }
 
-// ConvertToFieldsAndTags converts OTLP metric to a field containing metric values and a tag containing for decoration
-func ConvertToFieldsAndTags(m pmetric.Metric, logger *zap.Logger) (map[string]any, map[string]string) {
-	fields := make(map[string]any)
-	tags := make(map[string]string)
-	if m.Name() == "" {
-		return fields, tags
-	}
+type FieldsAndTagsPair struct {
+	Fields map[string]any
+	Tags   map[string]string
+}
 
-	// value is not needed for label decoration
-	fields[m.Name()] = nil
+// ConvertToFieldsAndTags converts OTLP metric to a field containing metric values and a tag containing for decoration
+func ConvertToFieldsAndTags(m pmetric.Metric, logger *zap.Logger) []FieldsAndTagsPair {
+	var converted []FieldsAndTagsPair
+	if m.Name() == "" {
+		return converted
+	}
 
 	var dps pmetric.NumberDataPointSlice
 	switch m.Type() {
@@ -187,19 +188,25 @@ func ConvertToFieldsAndTags(m pmetric.Metric, logger *zap.Logger) (map[string]an
 		logger.Warn("Unsupported metric type", zap.String("metric", m.Name()), zap.String("type", m.Type().String()))
 	}
 
-	// should support metrics with more than 1 datapoints?
-	if dps.Len() == 0 || dps.Len() > 1 {
-		logger.Warn("Metric has either 0 or more than 1 datapoints", zap.String("metric", m.Name()), zap.Int("datapoints", dps.Len()))
+	if dps.Len() == 0 {
+		logger.Warn("Metric has no datapoint", zap.String("metric", m.Name()))
 	}
 
-	if dps.Len() > 0 {
-		attrs := dps.At(0).Attributes()
+	for i := 0; i < dps.Len(); i++ {
+		tags := make(map[string]string)
+		attrs := dps.At(i).Attributes()
 		attrs.Range(func(k string, v pcommon.Value) bool {
 			tags[k] = v.AsString()
 			return true
 		})
+		converted = append(converted, FieldsAndTagsPair{
+			Fields: map[string]any{
+				m.Name(): nil, // metric value not needed for attribute decoration
+			},
+			Tags: tags,
+		})
 	}
-	return fields, tags
+	return converted
 }
 
 // ConvertToOTLPMetrics converts a field containing metric values and a tag containing the relevant labels to OTLP metrics

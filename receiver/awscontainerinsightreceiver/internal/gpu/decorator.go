@@ -7,7 +7,6 @@ import (
 	"context"
 
 	ci "github.com/open-telemetry/opentelemetry-collector-contrib/internal/aws/containerinsight"
-	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awscontainerinsightreceiver/internal/cadvisor/extractors"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awscontainerinsightreceiver/internal/stores"
 	"go.opentelemetry.io/collector/consumer"
 	"go.opentelemetry.io/collector/pdata/pcommon"
@@ -62,22 +61,19 @@ func (dc *decorateConsumer) ConsumeMetrics(ctx context.Context, md pmetric.Metri
 			ms := ilms.At(j).Metrics()
 			for k := 0; k < ms.Len(); k++ {
 				m := ms.At(k)
-				fields, tags := ci.ConvertToFieldsAndTags(m, dc.logger)
-				// copy down resource metrics only when it's missing at datapoint
-				for rtk, rtv := range resourceTags {
-					if _, ok := tags[rtk]; !ok {
-						tags[rtk] = rtv
+				converted := ci.ConvertToFieldsAndTags(m, dc.logger)
+				var rcis []*stores.RawContainerInsightsMetric
+				for _, pair := range converted {
+					rci := stores.NewRawContainerInsightsMetricWithData(ci.TypeGpuContainer, pair.Fields, pair.Tags, dc.logger)
+					if !rci.HasTag(ci.MetricType) {
+						// force type to be Container to decorate with container level labels
+						rci.AddTag(ci.MetricType, ci.TypeGpuContainer)
 					}
+					rcis = append(rcis, stores.NewRawContainerInsightsMetricWithData(ci.TypeGpuContainer, pair.Fields, pair.Tags, dc.logger))
 				}
-				cim := extractors.NewRawContainerInsightsMetric(ci.TypeGpuContainer, dc.logger)
-				cim.Fields = fields
-				cim.Tags = tags
-				if !cim.HasTag(ci.MetricType) {
-					// force type to be Container to decorate with container level labels
-					cim.AddTag(ci.MetricType, ci.TypeGpuContainer)
-				}
-				dc.decorateMetrics([]*extractors.RawContainerInsightsMetric{cim})
-				dc.updateAttributes(m, cim)
+
+				decorated := dc.decorateMetrics(rcis)
+				dc.updateAttributes(m, decorated)
 				if unit, ok := metricToUnit[m.Name()]; ok {
 					m.SetUnit(unit)
 				}
@@ -92,22 +88,23 @@ type Decorator interface {
 	Shutdown() error
 }
 
-func (dc *decorateConsumer) decorateMetrics(metrics []*extractors.RawContainerInsightsMetric) []*extractors.RawContainerInsightsMetric {
-	var result []*extractors.RawContainerInsightsMetric
-	for _, m := range metrics {
+func (dc *decorateConsumer) decorateMetrics(rcis []*stores.RawContainerInsightsMetric) []*stores.RawContainerInsightsMetric {
+	var result []*stores.RawContainerInsightsMetric
+	if dc.containerOrchestrator != ci.EKS {
+		return result
+	}
+	for _, rci := range rcis {
 		// add tags for EKS
-		if dc.containerOrchestrator == ci.EKS {
-			out := dc.k8sDecorator.Decorate(m)
-			if out != nil {
-				result = append(result, out.(*extractors.RawContainerInsightsMetric))
-			}
+		out := dc.k8sDecorator.Decorate(rci)
+		if out != nil {
+			result = append(result, out.(*stores.RawContainerInsightsMetric))
 		}
 	}
 	return result
 }
 
-func (dc *decorateConsumer) updateAttributes(m pmetric.Metric, cim *extractors.RawContainerInsightsMetric) {
-	if len(cim.Tags) == 0 {
+func (dc *decorateConsumer) updateAttributes(m pmetric.Metric, rcis []*stores.RawContainerInsightsMetric) {
+	if len(rcis) == 0 {
 		return
 	}
 	var dps pmetric.NumberDataPointSlice
@@ -119,17 +116,23 @@ func (dc *decorateConsumer) updateAttributes(m pmetric.Metric, cim *extractors.R
 	default:
 		dc.logger.Warn("Unsupported metric type", zap.String("metric", m.Name()), zap.String("type", m.Type().String()))
 	}
-
 	if dps.Len() == 0 {
 		return
 	}
-	attrs := dps.At(0).Attributes()
-	for tk, tv := range cim.Tags {
-		// type gets set with metrictransformer while duplicating metrics at different resource levels
-		if tk == ci.MetricType {
+	for i := 0; i < dps.Len(); i++ {
+		if i >= len(rcis) {
+			// this shouldn't be the case, but it helps to avoid panic
 			continue
 		}
-		attrs.PutStr(tk, tv)
+		attrs := dps.At(i).Attributes()
+		tags := rcis[i].Tags
+		for tk, tv := range tags {
+			// type gets set with metrictransformer while duplicating metrics at different resource levels
+			if tk == ci.MetricType {
+				continue
+			}
+			attrs.PutStr(tk, tv)
+		}
 	}
 }
 
