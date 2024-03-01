@@ -9,7 +9,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.opentelemetry.io/collector/consumer"
 	"go.opentelemetry.io/collector/consumer/consumertest"
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/collector/pdata/pmetric"
@@ -28,19 +27,6 @@ func (m *MockK8sDecorator) Decorate(metric stores.CIMetric) stores.CIMetric {
 }
 
 func (m *MockK8sDecorator) Shutdown() error {
-	return nil
-}
-
-type mockNextConsumer struct {
-}
-
-func (mc *mockNextConsumer) Capabilities() consumer.Capabilities {
-	return consumer.Capabilities{
-		MutatesData: true,
-	}
-}
-
-func (mc *mockNextConsumer) ConsumeMetrics(_ context.Context, md pmetric.Metrics) error {
 	return nil
 }
 

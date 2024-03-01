@@ -35,7 +35,7 @@ DCGM_FI_DEV_GPU_UTIL{gpu="0",UUID="uuid",device="nvidia0",modelName="NVIDIA A10G
 `
 
 const (
-	dummyInstanceId  = "i-0000000000"
+	dummyInstanceID  = "i-0000000000"
 	dummyClusterName = "cluster-name"
 )
 
@@ -47,7 +47,7 @@ func (m mockHostInfoProvider) GetClusterName() string {
 }
 
 func (m mockHostInfoProvider) GetInstanceID() string {
-	return dummyInstanceId
+	return dummyInstanceID
 }
 
 type mockDecorator struct {
@@ -96,7 +96,7 @@ func (m mockConsumer) ConsumeMetrics(_ context.Context, md pmetric.Metrics) erro
 			assert.True(m.t, found)
 			assert.Equal(m.t, v, lv.AsString())
 		}
-		scrapedMetricCnt += 1
+		scrapedMetricCnt++
 	}
 	assert.Equal(m.t, len(m.expected), scrapedMetricCnt)
 	*m.called = true
@@ -150,7 +150,7 @@ func TestNewDcgmScraperEndToEnd(t *testing.T) {
 				ci.NodeNameKey:            "hostname",
 				ci.AttributeK8sNamespace:  "kube-system",
 				ci.ClusterNameKey:         dummyClusterName,
-				ci.InstanceID:             dummyInstanceId,
+				ci.InstanceID:             dummyInstanceID,
 				ci.AttributeFullPodName:   "fullname-hash",
 				ci.AttributeK8sPodName:    "fullname-hash",
 				ci.AttributeContainerName: "main",
@@ -163,7 +163,7 @@ func TestNewDcgmScraperEndToEnd(t *testing.T) {
 				ci.NodeNameKey:            "hostname",
 				ci.AttributeK8sNamespace:  "kube-system",
 				ci.ClusterNameKey:         dummyClusterName,
-				ci.InstanceID:             dummyInstanceId,
+				ci.InstanceID:             dummyInstanceID,
 				ci.AttributeFullPodName:   "fullname-hash",
 				ci.AttributeK8sPodName:    "fullname-hash",
 				ci.AttributeContainerName: "main",
