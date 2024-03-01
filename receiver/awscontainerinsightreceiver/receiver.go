@@ -107,6 +107,8 @@ func (acir *awsContainerInsightReceiver) Start(ctx context.Context, host compone
 			Consumer:          acir.nextConsumer,
 			Host:              host,
 			HostInfoProvider:  hostinfo,
+			K8sDecorator:      k8sDecorator,
+			Logger:            acir.settings.Logger,
 		}
 
 		err = acir.initDcgmScraper(ctx, host, hostinfo, k8sDecorator)
@@ -211,9 +213,9 @@ func (acir *awsContainerInsightReceiver) initDcgmScraper(ctx context.Context, ho
 }
 
 func (acir *awsContainerInsightReceiver) initNeuronScraper(opts prometheusscraper.SimplePromethuesScraperOpts) error {
-	if !acir.config.EnableNeuronMetric {
-		return nil
-	}
+	// if !acir.config.EnableNeuronMetric {
+	// 	return nil
+	// }
 
 	var err error
 	acir.neuronMonitorScraper, err = prometheusscraper.NewSimplePromethuesScraper(opts, nueron.GetNueronScrapeConfig(opts))
@@ -270,13 +272,18 @@ func (acir *awsContainerInsightReceiver) collectData(ctx context.Context) error 
 		acir.prometheusScraper.GetMetrics() //nolint:errcheck
 	}
 
-	if acir.dcgmScraper != nil {
-		acir.dcgmScraper.GetMetrics() //nolint:errcheck
-	}
+	// if acir.dcgmScraper != nil {
+	// 	acir.dcgmScraper.GetMetrics() //nolint:errcheck
+	// }
+
+	acir.settings.Logger.Info("We will start the Neuron Scraper")
 
 	if acir.neuronMonitorScraper != nil {
+		acir.settings.Logger.Info("Neuron Scraper is not NIL")
 		acir.neuronMonitorScraper.GetMetrics() //nolint:errcheck
 	}
+
+	acir.settings.Logger.Info("If this happened Neuron is started or not")
 
 	for _, md := range mds {
 		err := acir.nextConsumer.ConsumeMetrics(ctx, md)

@@ -155,6 +155,7 @@ const (
 	TypeGpuPod         = "PodGPU"
 	TypeGpuNode        = "NodeGPU"
 	TypeGpuCluster     = "ClusterGPU"
+	TypeNeuron         = "ContainerNeuron"
 
 	// unit
 	UnitBytes       = "Bytes"
