@@ -65,11 +65,6 @@ func (dc *decorateConsumer) ConsumeMetrics(ctx context.Context, md pmetric.Metri
 				converted := ci.ConvertToFieldsAndTags(m, dc.logger)
 				var rcis []*stores.RawContainerInsightsMetric
 				for _, pair := range converted {
-					rci := stores.NewRawContainerInsightsMetricWithData(ci.TypeGpuContainer, pair.Fields, pair.Tags, dc.logger)
-					if !rci.HasTag(ci.MetricType) {
-						// force type to be Container to decorate with container level labels
-						rci.AddTag(ci.MetricType, ci.TypeGpuContainer)
-					}
 					rcis = append(rcis, stores.NewRawContainerInsightsMetricWithData(ci.TypeGpuContainer, pair.Fields, pair.Tags, dc.logger))
 				}
 
