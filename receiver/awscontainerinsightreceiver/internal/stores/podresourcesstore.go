@@ -66,27 +66,27 @@ func NewPodResourcesStore(logger *zap.Logger) *PodResourcesStore {
 			podResourcesClient:          podResourcesClient,
 		}
 
-		instance.AddResourceName("aws.amazon.com/neuroncore")
-		instance.AddResourceName("aws.amazon.com/neuron")
-		instance.AddResourceName("aws.amazon.com/neurondevice")
-
 		go func() {
 			refreshTicker := time.NewTicker(time.Second)
 			for {
 				select {
 				case <-refreshTicker.C:
+					logger.Info("entered refresh tick")
 					instance.refreshTick()
 				case <-instance.ctx.Done():
+					logger.Info("stopping refresh tick")
 					refreshTicker.Stop()
 					return
 				}
 			}
 		}()
+		time.Sleep(40)
 	})
 	return instance
 }
 
 func (p *PodResourcesStore) refreshTick() {
+	p.logger.Info("PodResources entered refreshTick")
 	now := time.Now()
 	if now.Sub(p.lastRefreshed) >= taskTimeout {
 		p.refresh()
@@ -95,7 +95,9 @@ func (p *PodResourcesStore) refreshTick() {
 }
 
 func (p *PodResourcesStore) refresh() {
+	p.logger.Info("PodResources entered refresh")
 	doRefresh := func() {
+		p.logger.Info("PodResources entering update map")
 		p.updateMaps()
 	}
 
@@ -106,10 +108,10 @@ func (p *PodResourcesStore) updateMaps() {
 	p.containerInfoToResourcesMap = make(map[ContainerInfo][]ResourceInfo)
 	p.resourceToPodContainerMap = make(map[ResourceInfo]ContainerInfo)
 
-	//if len(p.resourceNameSet) == 0 {
-	//	p.logger.Warn("No resource names allowlisted thus skipping updating of maps.")
-	//	return
-	//}
+	if len(p.resourceNameSet) == 0 {
+		p.logger.Warn("No resource names allowlisted thus skipping updating of maps.")
+		return
+	}
 
 	devicePods, err := p.podResourcesClient.ListPods()
 	if err != nil {
@@ -136,13 +138,13 @@ func (p *PodResourcesStore) updateMaps() {
 						resourceName: device.GetResourceName(),
 						deviceID:     deviceID,
 					}
-					//_, found := p.resourceNameSet[resourceInfo.resourceName]
-					//if found {
-					p.containerInfoToResourcesMap[containerInfo] = append(p.containerInfoToResourcesMap[containerInfo], resourceInfo)
-					p.resourceToPodContainerMap[resourceInfo] = containerInfo
+					_, found := p.resourceNameSet[resourceInfo.resourceName]
+					if found {
+						p.containerInfoToResourcesMap[containerInfo] = append(p.containerInfoToResourcesMap[containerInfo], resourceInfo)
+						p.resourceToPodContainerMap[resourceInfo] = containerInfo
 
-					p.logger.Info("/nContainerInfo : {" + containerInfo.namespace + "_" + containerInfo.podName + "_" + containerInfo.containerName + "}" + " -> ResourceInfo : {" + resourceInfo.resourceName + "_" + resourceInfo.deviceID + "_" + "}")
-					//}
+						p.logger.Info("/nContainerInfo : {" + containerInfo.namespace + "_" + containerInfo.podName + "_" + containerInfo.containerName + "}" + " -> ResourceInfo : {" + resourceInfo.resourceName + "_" + resourceInfo.deviceID + "_" + "}")
+					}
 				}
 			}
 		}
@@ -183,6 +185,11 @@ func (p *PodResourcesStore) PrintMaps() {
 		p.logger.Info("ResourceInfo-" + resourceInfo.resourceName + " ; " + resourceInfo.deviceID)
 		p.logger.Info("ContainerInfo-" + containerInfo.containerName + " ; " + containerInfo.podName)
 	}
+}
+
+func (p *PodResourcesStore) UpdateAndPrintMapsManually() {
+	// this also has embedded print statement
+	p.updateMaps()
 }
 
 func (p *PodResourcesStore) Shutdown() {

@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-
 	ci "github.com/open-telemetry/opentelemetry-collector-contrib/internal/aws/containerinsight"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awscontainerinsightreceiver/internal/stores"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/prometheusreceiver"
@@ -86,9 +85,18 @@ func NewSimplePromethuesScraper(opts SimplePromethuesScraperOpts, scraperConfig 
 func (ds *SimplePromethuesScraper) GetMetrics() []pmetric.Metrics {
 	// This method will never return metrics because the metrics are collected by the scraper.
 	// This method will ensure the scraper is running
+
+	// this thing works, now just fixing the podresourcestore
+	//ds.settings.Logger.Info("static_pod_resources staring scrapping")
+	//stores.StartScraping(ds.settings.Logger)
+
 	podresourcesstore := stores.NewPodResourcesStore(ds.settings.Logger)
+	ds.settings.Logger.Info("Adding resources to PodResources")
+	podresourcesstore.AddResourceName("aws.amazon.com/neuroncore")
+	podresourcesstore.AddResourceName("aws.amazon.com/neuron")
+	podresourcesstore.AddResourceName("aws.amazon.com/neurondevice")
 	podresourcesstore.GetResourcesInfo("123", "123", "123")
-	
+
 	if !ds.running {
 		ds.settings.Logger.Info("The scraper is not running, starting up the scraper")
 		err := ds.prometheusReceiver.Start(ds.ctx, ds.host)
