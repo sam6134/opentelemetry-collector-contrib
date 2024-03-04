@@ -14,8 +14,6 @@ import (
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awscontainerinsightreceiver/internal/stores"
 )
 
-var _ stores.CIMetric = (*CAdvisorMetric)(nil)
-
 func GetStats(info *cinfo.ContainerInfo) *cinfo.ContainerStats {
 	if len(info.Stats) == 0 {
 		return nil

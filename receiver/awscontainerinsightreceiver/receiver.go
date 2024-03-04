@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awscontainerinsightreceiver/internal/gpu"
+	nueron "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awscontainerinsightreceiver/internal/neuron"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awscontainerinsightreceiver/internal/prometheusscraper"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/consumer"
@@ -21,7 +22,6 @@ import (
 	"github.com/open-telemetry/opentelemetry-collector-contrib/internal/aws/k8s/k8sclient"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awscontainerinsightreceiver/internal/cadvisor"
 	ecsinfo "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awscontainerinsightreceiver/internal/ecsInfo"
-	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awscontainerinsightreceiver/internal/gpu"
 	hostInfo "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awscontainerinsightreceiver/internal/host"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awscontainerinsightreceiver/internal/k8sapiserver"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awscontainerinsightreceiver/internal/stores"
@@ -206,6 +206,16 @@ func (acir *awsContainerInsightReceiver) initDcgmScraper(ctx context.Context, ho
 		K8sDecorator:      decorator,
 		Logger:            acir.settings.Logger,
 	})
+	return err
+}
+
+func (acir *awsContainerInsightReceiver) initNeuronScraper(opts prometheusscraper.SimplePromethuesScraperOpts) error {
+	if !acir.config.EnableAcceleratedComputeMetrics {
+		return nil
+	}
+
+	var err error
+	acir.neuronMonitorScraper, err = prometheusscraper.NewSimplePromethuesScraper(opts, nueron.GetNueronScrapeConfig(opts))
 	return err
 }
 
