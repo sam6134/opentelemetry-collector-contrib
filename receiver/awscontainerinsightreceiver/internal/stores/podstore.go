@@ -483,7 +483,7 @@ func (p *PodStore) decorateMem(metric CIMetric, pod *corev1.Pod) {
 }
 
 func (p *PodStore) addStatus(metric CIMetric, pod *corev1.Pod) {
-	if metric.GetTag(ci.MetricType) == ci.TypePod || metric.GetTag(ci.MetricType) == ci.TypeGpuPod {
+	if metric.GetTag(ci.MetricType) == ci.TypePod {
 		metric.AddTag(ci.PodStatus, string(pod.Status.Phase))
 
 		if p.includeEnhancedMetrics {
