@@ -25,14 +25,14 @@ var (
 )
 
 type ContainerInfo struct {
-	podName       string
-	containerName string
-	namespace     string
+	PodName       string
+	ContainerName string
+	Namespace     string
 }
 
 type ResourceInfo struct {
-	resourceName string
-	deviceID     string
+	ResourceName string
+	DeviceID     string
 }
 
 type PodResourcesClientInterface interface {
@@ -119,17 +119,17 @@ func (p *PodResourcesStore) updateMaps() {
 			for _, device := range container.GetDevices() {
 
 				containerInfo := ContainerInfo{
-					podName:       pod.GetName(),
-					namespace:     pod.GetNamespace(),
-					containerName: container.GetName(),
+					PodName:       pod.GetName(),
+					Namespace:     pod.GetNamespace(),
+					ContainerName: container.GetName(),
 				}
 
 				for _, deviceID := range device.GetDeviceIds() {
 					resourceInfo := ResourceInfo{
-						resourceName: device.GetResourceName(),
-						deviceID:     deviceID,
+						ResourceName: device.GetResourceName(),
+						DeviceID:     deviceID,
 					}
-					_, found := p.resourceNameSet[resourceInfo.resourceName]
+					_, found := p.resourceNameSet[resourceInfo.ResourceName]
 					if found {
 						p.containerInfoToResourcesMap[containerInfo] = append(p.containerInfoToResourcesMap[containerInfo], resourceInfo)
 						p.resourceToPodContainerMap[resourceInfo] = containerInfo
@@ -141,7 +141,7 @@ func (p *PodResourcesStore) updateMaps() {
 }
 
 func (p *PodResourcesStore) GetContainerInfo(deviceID string, resourceName string) *ContainerInfo {
-	key := ResourceInfo{deviceID: deviceID, resourceName: resourceName}
+	key := ResourceInfo{DeviceID: deviceID, ResourceName: resourceName}
 	if containerInfo, ok := p.resourceToPodContainerMap[key]; ok {
 		return &containerInfo
 	}
@@ -149,7 +149,7 @@ func (p *PodResourcesStore) GetContainerInfo(deviceID string, resourceName strin
 }
 
 func (p *PodResourcesStore) GetResourcesInfo(podName string, containerName string, namespace string) *[]ResourceInfo {
-	key := ContainerInfo{podName: podName, containerName: containerName, namespace: namespace}
+	key := ContainerInfo{PodName: podName, ContainerName: containerName, Namespace: namespace}
 	if resourceInfo, ok := p.containerInfoToResourcesMap[key]; ok {
 		return &resourceInfo
 	}

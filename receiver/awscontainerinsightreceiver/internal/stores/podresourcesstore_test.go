@@ -32,54 +32,54 @@ const (
 var (
 	expectedContainerInfoToResourcesMap = map[ContainerInfo][]ResourceInfo{
 		{
-			podName:       defaultPodName,
-			containerName: defaultContainerName,
-			namespace:     defaultNamespace,
+			PodName:       defaultPodName,
+			ContainerName: defaultContainerName,
+			Namespace:     defaultNamespace,
 		}: {
 			{
-				resourceName: defaultResourceName,
-				deviceID:     defaultDeviceID1,
+				ResourceName: defaultResourceName,
+				DeviceID:     defaultDeviceID1,
 			},
 			{
-				resourceName: defaultResourceName,
-				deviceID:     defaultDeviceID2,
+				ResourceName: defaultResourceName,
+				DeviceID:     defaultDeviceID2,
 			},
 		},
 	}
 
 	expectedResourceToPodContainerMap = map[ResourceInfo]ContainerInfo{
 		{
-			resourceName: defaultResourceName,
-			deviceID:     defaultDeviceID1,
+			ResourceName: defaultResourceName,
+			DeviceID:     defaultDeviceID1,
 		}: {
-			podName:       defaultPodName,
-			containerName: defaultContainerName,
-			namespace:     defaultNamespace,
+			PodName:       defaultPodName,
+			ContainerName: defaultContainerName,
+			Namespace:     defaultNamespace,
 		},
 		{
-			resourceName: defaultResourceName,
-			deviceID:     defaultDeviceID2,
+			ResourceName: defaultResourceName,
+			DeviceID:     defaultDeviceID2,
 		}: {
-			podName:       defaultPodName,
-			containerName: defaultContainerName,
-			namespace:     defaultNamespace,
+			PodName:       defaultPodName,
+			ContainerName: defaultContainerName,
+			Namespace:     defaultNamespace,
 		},
 	}
 
 	expectedContainerInfo = ContainerInfo{
-		podName:       defaultPodName,
-		containerName: defaultContainerName,
-		namespace:     defaultNamespace,
+		PodName:       defaultPodName,
+		ContainerName: defaultContainerName,
+		Namespace:     defaultNamespace,
 	}
 
 	expectedResourceInfo = []ResourceInfo{
 		{
-			resourceName: defaultResourceName,
-			deviceID:     defaultDeviceID1,
+			ResourceName: defaultResourceName,
+			DeviceID:     defaultDeviceID1,
 		},
 		{
-			resourceName: defaultResourceName,
-			deviceID:     defaultDeviceID2,
+			ResourceName: defaultResourceName,
+			DeviceID:     defaultDeviceID2,
 		},
 	}
 
