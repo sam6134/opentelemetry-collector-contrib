@@ -28,6 +28,7 @@ import (
 
 	ci "github.com/open-telemetry/opentelemetry-collector-contrib/internal/aws/containerinsight"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awscontainerinsightreceiver/internal/cadvisor/extractors"
+	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awscontainerinsightreceiver/internal/stores"
 )
 
 // The amount of time for which to keep stats in memory.
@@ -198,7 +199,7 @@ func (c *Cadvisor) addEbsVolumeInfo(tags map[string]string, ebsVolumeIdsUsedAsPV
 	}
 }
 
-func (c *Cadvisor) addECSMetrics(cadvisormetrics []*extractors.CAdvisorMetric) {
+func (c *Cadvisor) addECSMetrics(cadvisormetrics []*stores.RawContainerInsightsMetric) {
 
 	if len(cadvisormetrics) == 0 {
 		c.logger.Warn("cadvisor can't collect any metrics!")
@@ -257,9 +258,9 @@ func addECSResources(tags map[string]string) {
 	}
 }
 
-func (c *Cadvisor) decorateMetrics(cadvisormetrics []*extractors.CAdvisorMetric) []*extractors.CAdvisorMetric {
+func (c *Cadvisor) decorateMetrics(cadvisormetrics []*stores.RawContainerInsightsMetric) []*stores.RawContainerInsightsMetric {
 	ebsVolumeIdsUsedAsPV := c.hostInfo.ExtractEbsIDsUsedByKubernetes()
-	var result []*extractors.CAdvisorMetric
+	var result []*stores.RawContainerInsightsMetric
 	for _, m := range cadvisormetrics {
 		tags := m.GetTags()
 		c.addEbsVolumeInfo(tags, ebsVolumeIdsUsedAsPV)
@@ -308,7 +309,7 @@ func (c *Cadvisor) decorateMetrics(cadvisormetrics []*extractors.CAdvisorMetric)
 
 			out := c.k8sDecorator.Decorate(m)
 			if out != nil {
-				result = append(result, out.(*extractors.CAdvisorMetric))
+				result = append(result, out.(*stores.RawContainerInsightsMetric))
 			}
 		}
 

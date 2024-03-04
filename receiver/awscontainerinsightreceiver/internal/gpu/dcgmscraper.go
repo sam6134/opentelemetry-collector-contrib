@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"time"
 
-	ci "github.com/open-telemetry/opentelemetry-collector-contrib/internal/aws/containerinsight"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/config"
 	"github.com/prometheus/prometheus/discovery"
@@ -21,13 +20,16 @@ import (
 	"go.opentelemetry.io/collector/receiver"
 	"go.uber.org/zap"
 
+	ci "github.com/open-telemetry/opentelemetry-collector-contrib/internal/aws/containerinsight"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/prometheusreceiver"
 )
 
 const (
-	caFile             = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
-	collectionInterval = 60 * time.Second
-	jobName            = "containerInsightsDCGMExporterScraper"
+	caFile                    = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
+	collectionInterval        = 60 * time.Second
+	jobName                   = "containerInsightsDCGMExporterScraper"
+	scraperMetricsPath        = "/metrics"
+	scraperK8sServiceSelector = "k8s-app=dcgm-exporter-service"
 )
 
 type DcgmScraper struct {
@@ -66,109 +68,9 @@ func NewDcgmScraper(opts DcgmScraperOpts) (*DcgmScraper, error) {
 		return nil, errors.New("cluster name provider cannot be nil")
 	}
 
-	scrapeConfig := &config.ScrapeConfig{
-		ScrapeInterval: model.Duration(collectionInterval),
-		ScrapeTimeout:  model.Duration(collectionInterval),
-		JobName:        jobName,
-		Scheme:         "http",
-		MetricsPath:    "/metrics",
-		ServiceDiscoveryConfigs: discovery.Configs{
-			&kubernetes.SDConfig{
-				Role: kubernetes.RoleService,
-				NamespaceDiscovery: kubernetes.NamespaceDiscovery{
-					IncludeOwnNamespace: true,
-				},
-				Selectors: []kubernetes.SelectorConfig{
-					{
-						Role:  kubernetes.RoleService,
-						Label: "k8s-app=dcgm-exporter-service",
-					},
-				},
-				AttachMetadata: kubernetes.AttachMetadataConfig{
-					Node: true,
-				},
-			},
-		},
-		RelabelConfigs: []*relabel.Config{
-			{
-				SourceLabels: model.LabelNames{"__address__"},
-				Regex:        relabel.MustNewRegexp("([^:]+)(?::\\d+)?"),
-				Replacement:  "${1}:9400",
-				TargetLabel:  "__address__",
-				Action:       relabel.Replace,
-			},
-		},
-		MetricRelabelConfigs: []*relabel.Config{
-			{
-				SourceLabels: model.LabelNames{"__name__"},
-				Regex:        relabel.MustNewRegexp("DCGM_.*"),
-				Action:       relabel.Keep,
-			},
-			{
-				SourceLabels: model.LabelNames{"Hostname"},
-				TargetLabel:  "NodeName",
-				Regex:        relabel.MustNewRegexp("(.*)"),
-				Replacement:  "${1}",
-				Action:       relabel.Replace,
-			},
-			{
-				SourceLabels: model.LabelNames{"namespace"},
-				TargetLabel:  "Namespace",
-				Regex:        relabel.MustNewRegexp("(.*)"),
-				Replacement:  "${1}",
-				Action:       relabel.Replace,
-			},
-			// hacky way to inject static values (clusterName & instanceId) to label set without additional processor
-			// relabel looks up an existing label then creates another label with given key (TargetLabel) and value (static)
-			{
-				SourceLabels: model.LabelNames{"namespace"},
-				TargetLabel:  "ClusterName",
-				Regex:        relabel.MustNewRegexp(".*"),
-				Replacement:  opts.HostInfoProvider.GetClusterName(),
-				Action:       relabel.Replace,
-			},
-			{
-				SourceLabels: model.LabelNames{"namespace"},
-				TargetLabel:  "InstanceId",
-				Regex:        relabel.MustNewRegexp(".*"),
-				Replacement:  opts.HostInfoProvider.GetInstanceID(),
-				Action:       relabel.Replace,
-			},
-			{
-				SourceLabels: model.LabelNames{"pod"},
-				TargetLabel:  "FullPodName",
-				Regex:        relabel.MustNewRegexp("(.*)"),
-				Replacement:  "${1}",
-				Action:       relabel.Replace,
-			},
-			// additional k8s podname for service name decoration
-			{
-				SourceLabels: model.LabelNames{"pod"},
-				TargetLabel:  "K8sPodName",
-				Regex:        relabel.MustNewRegexp("(.*)"),
-				Replacement:  "${1}",
-				Action:       relabel.Replace,
-			},
-			{
-				SourceLabels: model.LabelNames{"container"},
-				TargetLabel:  "ContainerName",
-				Regex:        relabel.MustNewRegexp("(.*)"),
-				Replacement:  "${1}",
-				Action:       relabel.Replace,
-			},
-			{
-				SourceLabels: model.LabelNames{"device"},
-				TargetLabel:  "GpuDevice",
-				Regex:        relabel.MustNewRegexp("(.*)"),
-				Replacement:  "${1}",
-				Action:       relabel.Replace,
-			},
-		},
-	}
-
 	promConfig := prometheusreceiver.Config{
 		PrometheusConfig: &config.Config{
-			ScrapeConfigs: []*config.ScrapeConfig{scrapeConfig},
+			ScrapeConfigs: []*config.ScrapeConfig{getScraperConfig(opts.HostInfoProvider)},
 		},
 	}
 
@@ -197,6 +99,100 @@ func NewDcgmScraper(opts DcgmScraperOpts) (*DcgmScraper, error) {
 		prometheusReceiver: promReceiver,
 		k8sDecorator:       opts.K8sDecorator,
 	}, nil
+}
+
+func getScraperConfig(hostInfoProvider hostInfoProvider) *config.ScrapeConfig {
+	return &config.ScrapeConfig{
+		ScrapeInterval: model.Duration(collectionInterval),
+		ScrapeTimeout:  model.Duration(collectionInterval),
+		JobName:        jobName,
+		Scheme:         "http",
+		MetricsPath:    scraperMetricsPath,
+		ServiceDiscoveryConfigs: discovery.Configs{
+			&kubernetes.SDConfig{
+				Role: kubernetes.RoleService,
+				NamespaceDiscovery: kubernetes.NamespaceDiscovery{
+					IncludeOwnNamespace: true,
+				},
+				Selectors: []kubernetes.SelectorConfig{
+					{
+						Role:  kubernetes.RoleService,
+						Label: scraperK8sServiceSelector,
+					},
+				},
+			},
+		},
+		MetricRelabelConfigs: getMetricRelabelConfig(hostInfoProvider),
+	}
+}
+
+func getMetricRelabelConfig(hostInfoProvider hostInfoProvider) []*relabel.Config {
+	return []*relabel.Config{
+		{
+			SourceLabels: model.LabelNames{"__name__"},
+			Regex:        relabel.MustNewRegexp("DCGM_.*"),
+			Action:       relabel.Keep,
+		},
+		{
+			SourceLabels: model.LabelNames{"Hostname"},
+			TargetLabel:  ci.NodeNameKey,
+			Regex:        relabel.MustNewRegexp("(.*)"),
+			Replacement:  "${1}",
+			Action:       relabel.Replace,
+		},
+		{
+			SourceLabels: model.LabelNames{"namespace"},
+			TargetLabel:  ci.AttributeK8sNamespace,
+			Regex:        relabel.MustNewRegexp("(.*)"),
+			Replacement:  "${1}",
+			Action:       relabel.Replace,
+		},
+		// hacky way to inject static values (clusterName & instanceId) to label set without additional processor
+		// relabel looks up an existing label then creates another label with given key (TargetLabel) and value (static)
+		{
+			SourceLabels: model.LabelNames{"namespace"},
+			TargetLabel:  ci.ClusterNameKey,
+			Regex:        relabel.MustNewRegexp(".*"),
+			Replacement:  hostInfoProvider.GetClusterName(),
+			Action:       relabel.Replace,
+		},
+		{
+			SourceLabels: model.LabelNames{"namespace"},
+			TargetLabel:  ci.InstanceID,
+			Regex:        relabel.MustNewRegexp(".*"),
+			Replacement:  hostInfoProvider.GetInstanceID(),
+			Action:       relabel.Replace,
+		},
+		{
+			SourceLabels: model.LabelNames{"pod"},
+			TargetLabel:  ci.AttributeFullPodName,
+			Regex:        relabel.MustNewRegexp("(.*)"),
+			Replacement:  "${1}",
+			Action:       relabel.Replace,
+		},
+		// additional k8s podname for service name and k8s blob decoration
+		{
+			SourceLabels: model.LabelNames{"pod"},
+			TargetLabel:  ci.AttributeK8sPodName,
+			Regex:        relabel.MustNewRegexp("(.*)"),
+			Replacement:  "${1}",
+			Action:       relabel.Replace,
+		},
+		{
+			SourceLabels: model.LabelNames{"container"},
+			TargetLabel:  ci.AttributeContainerName,
+			Regex:        relabel.MustNewRegexp("(.*)"),
+			Replacement:  "${1}",
+			Action:       relabel.Replace,
+		},
+		{
+			SourceLabels: model.LabelNames{"device"},
+			TargetLabel:  ci.AttributeGpuDevice,
+			Regex:        relabel.MustNewRegexp("(.*)"),
+			Replacement:  "${1}",
+			Action:       relabel.Replace,
+		},
+	}
 }
 
 func (ds *DcgmScraper) GetMetrics() []pmetric.Metrics {

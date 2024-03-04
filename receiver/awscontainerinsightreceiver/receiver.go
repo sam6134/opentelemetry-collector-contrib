@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awscontainerinsightreceiver/internal/gpu"
-	nueron "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awscontainerinsightreceiver/internal/neuron"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awscontainerinsightreceiver/internal/prometheusscraper"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/consumer"
@@ -22,6 +21,7 @@ import (
 	"github.com/open-telemetry/opentelemetry-collector-contrib/internal/aws/k8s/k8sclient"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awscontainerinsightreceiver/internal/cadvisor"
 	ecsinfo "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awscontainerinsightreceiver/internal/ecsInfo"
+	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awscontainerinsightreceiver/internal/gpu"
 	hostInfo "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awscontainerinsightreceiver/internal/host"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awscontainerinsightreceiver/internal/k8sapiserver"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awscontainerinsightreceiver/internal/stores"
@@ -95,10 +95,14 @@ func (acir *awsContainerInsightReceiver) Start(ctx context.Context, host compone
 		if err != nil {
 			return err
 		}
-
 		err = acir.initPrometheusScraper(ctx, host, hostinfo, leaderElection)
 		if err != nil {
 			acir.settings.Logger.Debug("Unable to start kube apiserver prometheus scraper", zap.Error(err))
+		}
+
+		err = acir.initDcgmScraper(ctx, host, hostinfo, k8sDecorator)
+		if err != nil {
+			acir.settings.Logger.Debug("Unable to start dcgm scraper", zap.Error(err))
 		}
 
 		simplePrometheusScraperOpts := prometheusscraper.SimplePromethuesScraperOpts{
@@ -107,11 +111,6 @@ func (acir *awsContainerInsightReceiver) Start(ctx context.Context, host compone
 			Consumer:          acir.nextConsumer,
 			Host:              host,
 			HostInfoProvider:  hostinfo,
-		}
-
-		err = acir.initDcgmScraper(ctx, host, hostinfo, k8sDecorator)
-		if err != nil {
-			acir.settings.Logger.Debug("Unable to start dcgm scraper", zap.Error(err))
 		}
 
 		err = acir.initNeuronScraper(simplePrometheusScraperOpts)
@@ -193,7 +192,7 @@ func (acir *awsContainerInsightReceiver) initPrometheusScraper(ctx context.Conte
 	return err
 }
 func (acir *awsContainerInsightReceiver) initDcgmScraper(ctx context.Context, host component.Host, hostinfo *hostInfo.Info, decorator *stores.K8sDecorator) error {
-	if !acir.config.EnableGpuMetric {
+	if !acir.config.EnableAcceleratedComputeMetrics {
 		return nil
 	}
 
@@ -207,16 +206,6 @@ func (acir *awsContainerInsightReceiver) initDcgmScraper(ctx context.Context, ho
 		K8sDecorator:      decorator,
 		Logger:            acir.settings.Logger,
 	})
-	return err
-}
-
-func (acir *awsContainerInsightReceiver) initNeuronScraper(opts prometheusscraper.SimplePromethuesScraperOpts) error {
-	if !acir.config.EnableNeuronMetric {
-		return nil
-	}
-
-	var err error
-	acir.neuronMonitorScraper, err = prometheusscraper.NewSimplePromethuesScraper(opts, nueron.GetNueronScrapeConfig(opts))
 	return err
 }
 
