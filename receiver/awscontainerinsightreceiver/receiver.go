@@ -111,6 +111,8 @@ func (acir *awsContainerInsightReceiver) Start(ctx context.Context, host compone
 			Consumer:          acir.nextConsumer,
 			Host:              host,
 			HostInfoProvider:  hostinfo,
+			K8sDecorator:      k8sDecorator,
+			Logger:            acir.settings.Logger,
 		}
 
 		err = acir.initNeuronScraper(simplePrometheusScraperOpts)

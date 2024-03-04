@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 
+	ci "github.com/open-telemetry/opentelemetry-collector-contrib/internal/aws/containerinsight"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/prometheusreceiver"
 	"github.com/prometheus/prometheus/config"
 	"go.opentelemetry.io/collector/component"
@@ -30,6 +31,8 @@ type SimplePromethuesScraperOpts struct {
 	Host              component.Host
 	HostInfoProvider  hostInfoProvider
 	ScraperConfigs    *config.ScrapeConfig
+	K8sDecorator      Decorator
+	Logger            *zap.Logger
 }
 
 type hostInfoProvider interface {
@@ -58,8 +61,15 @@ func NewSimplePromethuesScraper(opts SimplePromethuesScraperOpts, scraperConfig 
 		TelemetrySettings: opts.TelemetrySettings,
 	}
 
+	decoConsumer := decorateConsumer{
+		containerOrchestrator: ci.EKS,
+		nextConsumer:          opts.Consumer,
+		k8sDecorator:          opts.K8sDecorator,
+		logger:                opts.Logger,
+	}
+
 	promFactory := prometheusreceiver.NewFactory()
-	promReceiver, err := promFactory.CreateMetricsReceiver(opts.Ctx, params, &promConfig, opts.Consumer)
+	promReceiver, err := promFactory.CreateMetricsReceiver(opts.Ctx, params, &promConfig, &decoConsumer)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create prometheus receiver: %w", err)
 	}
