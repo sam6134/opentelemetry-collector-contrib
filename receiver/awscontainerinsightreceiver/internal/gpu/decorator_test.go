@@ -7,50 +7,17 @@ import (
 	"context"
 	"testing"
 
-	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awscontainerinsightreceiver/internal/stores"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.opentelemetry.io/collector/consumer"
 	"go.opentelemetry.io/collector/consumer/consumertest"
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/collector/pdata/pmetric"
 	"go.uber.org/zap"
+
+	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awscontainerinsightreceiver/internal/stores"
 )
 
 var _ Decorator = (*MockK8sDecorator)(nil)
-
-type mockGpuMetric struct {
-	tags   map[string]string
-	fields map[string]any
-}
-
-func (m *mockGpuMetric) HasField(key string) bool {
-	return m.fields[key] != nil
-}
-
-func (m *mockGpuMetric) AddField(key string, val any) {
-	m.fields[key] = val
-}
-
-func (m *mockGpuMetric) GetField(key string) any {
-	return m.fields[key]
-}
-
-func (m *mockGpuMetric) HasTag(key string) bool {
-	return m.tags[key] != ""
-}
-
-func (m *mockGpuMetric) AddTag(key, val string) {
-	m.tags[key] = val
-}
-
-func (m *mockGpuMetric) GetTag(key string) string {
-	return m.tags[key]
-}
-
-func (m *mockGpuMetric) RemoveTag(key string) {
-	delete(m.tags, key)
-}
 
 type MockK8sDecorator struct {
 }
@@ -60,19 +27,6 @@ func (m *MockK8sDecorator) Decorate(metric stores.CIMetric) stores.CIMetric {
 }
 
 func (m *MockK8sDecorator) Shutdown() error {
-	return nil
-}
-
-type mockNextConsumer struct {
-}
-
-func (mc *mockNextConsumer) Capabilities() consumer.Capabilities {
-	return consumer.Capabilities{
-		MutatesData: true,
-	}
-}
-
-func (mc *mockNextConsumer) ConsumeMetrics(_ context.Context, md pmetric.Metrics) error {
 	return nil
 }
 
@@ -183,7 +137,7 @@ func TestConsumeMetrics(t *testing.T) {
 			return
 		}
 		require.NoError(t, err)
-		assert.Equal(t, tc.metrics.MetricCount(), tc.want.MetricCount())
+		assert.Equal(t, tc.want.MetricCount(), tc.metrics.MetricCount())
 		if tc.want.MetricCount() == 0 {
 			continue
 		}

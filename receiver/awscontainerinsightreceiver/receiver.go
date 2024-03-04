@@ -95,10 +95,14 @@ func (acir *awsContainerInsightReceiver) Start(ctx context.Context, host compone
 		if err != nil {
 			return err
 		}
-
 		err = acir.initPrometheusScraper(ctx, host, hostinfo, leaderElection)
 		if err != nil {
 			acir.settings.Logger.Debug("Unable to start kube apiserver prometheus scraper", zap.Error(err))
+		}
+
+		err = acir.initDcgmScraper(ctx, host, hostinfo, k8sDecorator)
+		if err != nil {
+			acir.settings.Logger.Debug("Unable to start dcgm scraper", zap.Error(err))
 		}
 
 		simplePrometheusScraperOpts := prometheusscraper.SimplePromethuesScraperOpts{
@@ -109,11 +113,6 @@ func (acir *awsContainerInsightReceiver) Start(ctx context.Context, host compone
 			HostInfoProvider:  hostinfo,
 			K8sDecorator:      k8sDecorator,
 			Logger:            acir.settings.Logger,
-		}
-
-		err = acir.initDcgmScraper(ctx, host, hostinfo, k8sDecorator)
-		if err != nil {
-			acir.settings.Logger.Debug("Unable to start dcgm scraper", zap.Error(err))
 		}
 
 		err = acir.initNeuronScraper(simplePrometheusScraperOpts)
@@ -195,7 +194,7 @@ func (acir *awsContainerInsightReceiver) initPrometheusScraper(ctx context.Conte
 	return err
 }
 func (acir *awsContainerInsightReceiver) initDcgmScraper(ctx context.Context, host component.Host, hostinfo *hostInfo.Info, decorator *stores.K8sDecorator) error {
-	if !acir.config.EnableGpuMetric {
+	if !acir.config.EnableAcceleratedComputeMetrics {
 		return nil
 	}
 

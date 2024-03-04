@@ -40,18 +40,6 @@ func GetNueronScrapeConfig(opts prometheusscraper.SimplePromethuesScraperOpts) *
 						Label: "k8s-app=neuron-monitor-service",
 					},
 				},
-				AttachMetadata: kubernetes.AttachMetadataConfig{
-					Node: true,
-				},
-			},
-		},
-		RelabelConfigs: []*relabel.Config{
-			{
-				SourceLabels: model.LabelNames{"__address__"},
-				Regex:        relabel.MustNewRegexp("([^:]+)(?::\\d+)?"),
-				Replacement:  "${1}:8000",
-				TargetLabel:  "__address__",
-				Action:       relabel.Replace,
 			},
 		},
 		MetricRelabelConfigs: GetNueronMetricRelabelConfigs(opts),

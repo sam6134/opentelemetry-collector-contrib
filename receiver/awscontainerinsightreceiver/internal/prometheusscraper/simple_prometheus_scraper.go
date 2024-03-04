@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+
 	ci "github.com/open-telemetry/opentelemetry-collector-contrib/internal/aws/containerinsight"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awscontainerinsightreceiver/internal/stores"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/prometheusreceiver"
@@ -30,6 +31,7 @@ type SimplePromethuesScraperOpts struct {
 	Consumer          consumer.Metrics
 	Host              component.Host
 	HostInfoProvider  hostInfoProvider
+	ScraperConfigs    *config.ScrapeConfig
 	K8sDecorator      Decorator
 	Logger            *zap.Logger
 }
