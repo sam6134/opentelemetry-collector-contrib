@@ -20,7 +20,7 @@ const (
 	jobName            = "containerInsightsNeuronMonitorScraper"
 )
 
-func GetNueronScrapeConfig(hostinfo prometheusscraper.HostInfoProvider) *config.ScrapeConfig {
+func GetNeuronScrapeConfig(hostinfo prometheusscraper.HostInfoProvider) *config.ScrapeConfig {
 
 	return &config.ScrapeConfig{
 		ScrapeInterval: model.Duration(collectionInterval),
@@ -42,11 +42,11 @@ func GetNueronScrapeConfig(hostinfo prometheusscraper.HostInfoProvider) *config.
 				},
 			},
 		},
-		MetricRelabelConfigs: GetNueronMetricRelabelConfigs(hostinfo),
+		MetricRelabelConfigs: GetNeuronMetricRelabelConfigs(hostinfo),
 	}
 }
 
-func GetNueronMetricRelabelConfigs(hostinfo prometheusscraper.HostInfoProvider) []*relabel.Config {
+func GetNeuronMetricRelabelConfigs(hostinfo prometheusscraper.HostInfoProvider) []*relabel.Config {
 
 	return []*relabel.Config{
 		{

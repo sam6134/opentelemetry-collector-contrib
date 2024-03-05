@@ -33,7 +33,7 @@ type TestSimplePrometheusEndToEndOpts struct {
 	T                   *testing.T
 	Consumer            consumer.Metrics
 	DataReturned        string
-	ScraperOpts         SimplePromethuesScraperOpts
+	ScraperOpts         SimplePrometheusScraperOpts
 	MetricRelabelConfig []*relabel.Config
 }
 
@@ -75,7 +75,7 @@ func (m MockConsumer) ConsumeMetrics(_ context.Context, md pmetric.Metrics) erro
 }
 
 func TestSimplePrometheusEndToEnd(opts TestSimplePrometheusEndToEndOpts) {
-	scraper, err := NewSimplePromethuesScraper(opts.ScraperOpts)
+	scraper, err := NewSimplePrometheusScraper(opts.ScraperOpts)
 	assert.NoError(opts.T, err)
 
 	// build up a new PR

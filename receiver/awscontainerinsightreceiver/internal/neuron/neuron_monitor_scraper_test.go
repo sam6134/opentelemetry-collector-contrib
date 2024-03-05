@@ -86,12 +86,12 @@ func TestNewNeuronScraperEndToEnd(t *testing.T) {
 		ExpectedMetrics: expectedMetrics,
 	}
 
-	mockedScraperOpts := prometheusscraper.SimplePromethuesScraperOpts{
+	mockedScraperOpts := prometheusscraper.SimplePrometheusScraperOpts{
 		Ctx:               context.TODO(),
 		TelemetrySettings: componenttest.NewNopTelemetrySettings(),
 		Consumer:          consumer,
 		Host:              componenttest.NewNopHost(),
-		ScraperConfigs:    GetNueronScrapeConfig(mockHostInfoProvider{}),
+		ScraperConfigs:    GetNeuronScrapeConfig(mockHostInfoProvider{}),
 		HostInfoProvider:  mockHostInfoProvider{},
 	}
 
@@ -100,7 +100,7 @@ func TestNewNeuronScraperEndToEnd(t *testing.T) {
 		Consumer:            consumer,
 		DataReturned:        renameMetric,
 		ScraperOpts:         mockedScraperOpts,
-		MetricRelabelConfig: GetNueronMetricRelabelConfigs(mockHostInfoProvider{}),
+		MetricRelabelConfig: GetNeuronMetricRelabelConfigs(mockHostInfoProvider{}),
 	})
 }
 

@@ -24,7 +24,7 @@ func TestSimplePrometheusScraperBadInputs(t *testing.T) {
 	settings := componenttest.NewNopTelemetrySettings()
 	settings.Logger, _ = zap.NewDevelopment()
 
-	tests := []SimplePromethuesScraperOpts{
+	tests := []SimplePrometheusScraperOpts{
 		{
 			Ctx:               context.TODO(),
 			TelemetrySettings: settings,
@@ -49,7 +49,7 @@ func TestSimplePrometheusScraperBadInputs(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		scraper, err := NewSimplePromethuesScraper(tt)
+		scraper, err := NewSimplePrometheusScraper(tt)
 
 		assert.Error(t, err)
 		assert.Nil(t, scraper)

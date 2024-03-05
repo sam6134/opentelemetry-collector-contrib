@@ -44,7 +44,7 @@ type awsContainerInsightReceiver struct {
 	k8sapiserver         metricsProvider
 	prometheusScraper    *k8sapiserver.PrometheusScraper
 	dcgmScraper          *gpu.DcgmScraper
-	neuronMonitorScraper *prometheusscraper.SimplePromethuesScraper
+	neuronMonitorScraper *prometheusscraper.SimplePrometheusScraper
 }
 
 // newAWSContainerInsightReceiver creates the aws container insight receiver with the given parameters.
@@ -224,18 +224,18 @@ func (acir *awsContainerInsightReceiver) initNeuronScraper(ctx context.Context, 
 		Logger:            acir.settings.Logger,
 	}
 
-	scraperOpts := prometheusscraper.SimplePromethuesScraperOpts{
+	scraperOpts := prometheusscraper.SimplePrometheusScraperOpts{
 		Ctx:               ctx,
 		TelemetrySettings: acir.settings,
 		Consumer:          &podAttributesDecoratorConsumer,
 		Host:              host,
-		ScraperConfigs:    neuron.GetNueronScrapeConfig(hostinfo),
+		ScraperConfigs:    neuron.GetNeuronScrapeConfig(hostinfo),
 		HostInfoProvider:  hostinfo,
 		Logger:            acir.settings.Logger,
 	}
 
 	var err error
-	acir.neuronMonitorScraper, err = prometheusscraper.NewSimplePromethuesScraper(scraperOpts)
+	acir.neuronMonitorScraper, err = prometheusscraper.NewSimplePrometheusScraper(scraperOpts)
 	return err
 }
 

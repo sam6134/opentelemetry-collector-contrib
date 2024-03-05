@@ -14,7 +14,7 @@ import (
 	"go.uber.org/zap"
 )
 
-type SimplePromethuesScraper struct {
+type SimplePrometheusScraper struct {
 	ctx                context.Context
 	settings           component.TelemetrySettings
 	host               component.Host
@@ -23,7 +23,7 @@ type SimplePromethuesScraper struct {
 	running            bool
 }
 
-type SimplePromethuesScraperOpts struct {
+type SimplePrometheusScraperOpts struct {
 	Ctx               context.Context
 	TelemetrySettings component.TelemetrySettings
 	Consumer          consumer.Metrics
@@ -38,7 +38,7 @@ type HostInfoProvider interface {
 	GetInstanceID() string
 }
 
-func NewSimplePromethuesScraper(opts SimplePromethuesScraperOpts) (*SimplePromethuesScraper, error) {
+func NewSimplePrometheusScraper(opts SimplePrometheusScraperOpts) (*SimplePrometheusScraper, error) {
 	if opts.Consumer == nil {
 		return nil, errors.New("consumer cannot be nil")
 	}
@@ -59,31 +59,13 @@ func NewSimplePromethuesScraper(opts SimplePromethuesScraperOpts) (*SimplePromet
 		TelemetrySettings: opts.TelemetrySettings,
 	}
 
-	// podresourcesstore := stores.NewPodResourcesStore(opts.Logger)
-	// podresourcesstore.AddResourceName("aws.amazon.com/neuroncore")
-	// podresourcesstore.AddResourceName("aws.amazon.com/neuron")
-	// podresourcesstore.AddResourceName("aws.amazon.com/neurondevice")
-
-	// decoConsumer := decorateConsumer{
-	// 	containerOrchestrator: ci.EKS,
-	// 	nextConsumer:          opts.Consumer,
-	// 	k8sDecorator:          opts.K8sDecorator,
-	// 	logger:                opts.Logger,
-	// }
-
-	// pod_att_consumer := neuron.PodAttributesDecoratorConsumer{
-	// 	nextConsumer:      &decoConsumer,
-	// 	podResourcesStore: podresourcesstore,
-	// 	logger:            opts.Logger,
-	// }
-
 	promFactory := prometheusreceiver.NewFactory()
 	promReceiver, err := promFactory.CreateMetricsReceiver(opts.Ctx, params, &promConfig, opts.Consumer)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create prometheus receiver: %w", err)
 	}
 
-	return &SimplePromethuesScraper{
+	return &SimplePrometheusScraper{
 		ctx:                opts.Ctx,
 		settings:           opts.TelemetrySettings,
 		host:               opts.Host,
@@ -92,13 +74,9 @@ func NewSimplePromethuesScraper(opts SimplePromethuesScraperOpts) (*SimplePromet
 	}, nil
 }
 
-func (ds *SimplePromethuesScraper) GetMetrics() []pmetric.Metrics {
+func (ds *SimplePrometheusScraper) GetMetrics() []pmetric.Metrics {
 	// This method will never return metrics because the metrics are collected by the scraper.
 	// This method will ensure the scraper is running
-
-	// this thing works, now just fixing the podresourcestore
-	//ds.settings.Logger.Info("static_pod_resources staring scrapping")
-	//stores.StartScraping(ds.settings.Logger)
 
 	if !ds.running {
 		ds.settings.Logger.Info("The scraper is not running, starting up the scraper")
@@ -111,7 +89,7 @@ func (ds *SimplePromethuesScraper) GetMetrics() []pmetric.Metrics {
 	return nil
 }
 
-func (ds *SimplePromethuesScraper) Shutdown() {
+func (ds *SimplePrometheusScraper) Shutdown() {
 	if ds.running {
 		err := ds.prometheusReceiver.Shutdown(ds.ctx)
 		if err != nil {
