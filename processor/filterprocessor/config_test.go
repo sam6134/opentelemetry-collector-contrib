@@ -40,7 +40,7 @@ func TestLoadingConfigStrict(t *testing.T) {
 		expected *Config
 	}{
 		{
-			id: component.NewIDWithName("filter", "empty"),
+			id: component.MustNewIDWithName("filter", "empty"),
 			expected: &Config{
 				ErrorMode: ottl.PropagateError,
 				Metrics: MetricFilters{
@@ -50,7 +50,7 @@ func TestLoadingConfigStrict(t *testing.T) {
 				},
 			},
 		}, {
-			id: component.NewIDWithName("filter", "include"),
+			id: component.MustNewIDWithName("filter", "include"),
 			expected: &Config{
 				ErrorMode: ottl.PropagateError,
 				Metrics: MetricFilters{
@@ -58,7 +58,7 @@ func TestLoadingConfigStrict(t *testing.T) {
 				},
 			},
 		}, {
-			id: component.NewIDWithName("filter", "exclude"),
+			id: component.MustNewIDWithName("filter", "exclude"),
 			expected: &Config{
 				ErrorMode: ottl.PropagateError,
 				Metrics: MetricFilters{
@@ -66,7 +66,7 @@ func TestLoadingConfigStrict(t *testing.T) {
 				},
 			},
 		}, {
-			id: component.NewIDWithName("filter", "includeexclude"),
+			id: component.MustNewIDWithName("filter", "includeexclude"),
 			expected: &Config{
 				ErrorMode: ottl.PropagateError,
 				Metrics: MetricFilters{
@@ -99,7 +99,7 @@ func TestLoadingConfigStrict(t *testing.T) {
 func TestLoadingConfigStrictLogs(t *testing.T) {
 
 	testDataLogPropertiesInclude := &LogMatchProperties{
-		LogMatchType: Strict,
+		LogMatchType: strictType,
 		ResourceAttributes: []filterconfig.Attribute{
 			{
 				Key:   "should_include",
@@ -109,7 +109,7 @@ func TestLoadingConfigStrictLogs(t *testing.T) {
 	}
 
 	testDataLogPropertiesExclude := &LogMatchProperties{
-		LogMatchType: Strict,
+		LogMatchType: strictType,
 		ResourceAttributes: []filterconfig.Attribute{
 			{
 				Key:   "should_exclude",
@@ -126,17 +126,17 @@ func TestLoadingConfigStrictLogs(t *testing.T) {
 		expected *Config
 	}{
 		{
-			id: component.NewIDWithName("filter", "empty"),
+			id: component.MustNewIDWithName("filter", "empty"),
 			expected: &Config{
 				ErrorMode: ottl.PropagateError,
 				Logs: LogFilters{
 					Include: &LogMatchProperties{
-						LogMatchType: Strict,
+						LogMatchType: strictType,
 					},
 				},
 			},
 		}, {
-			id: component.NewIDWithName("filter", "include"),
+			id: component.MustNewIDWithName("filter", "include"),
 			expected: &Config{
 				ErrorMode: ottl.PropagateError,
 				Logs: LogFilters{
@@ -144,7 +144,7 @@ func TestLoadingConfigStrictLogs(t *testing.T) {
 				},
 			},
 		}, {
-			id: component.NewIDWithName("filter", "exclude"),
+			id: component.MustNewIDWithName("filter", "exclude"),
 			expected: &Config{
 				ErrorMode: ottl.PropagateError,
 				Logs: LogFilters{
@@ -152,7 +152,7 @@ func TestLoadingConfigStrictLogs(t *testing.T) {
 				},
 			},
 		}, {
-			id: component.NewIDWithName("filter", "includeexclude"),
+			id: component.MustNewIDWithName("filter", "includeexclude"),
 			expected: &Config{
 				ErrorMode: ottl.PropagateError,
 				Logs: LogFilters{
@@ -182,12 +182,12 @@ func TestLoadingConfigStrictLogs(t *testing.T) {
 func TestLoadingConfigSeverityLogsStrict(t *testing.T) {
 
 	testDataLogPropertiesInclude := &LogMatchProperties{
-		LogMatchType:  Strict,
+		LogMatchType:  strictType,
 		SeverityTexts: []string{"INFO"},
 	}
 
 	testDataLogPropertiesExclude := &LogMatchProperties{
-		LogMatchType:  Strict,
+		LogMatchType:  strictType,
 		SeverityTexts: []string{"DEBUG", "DEBUG2", "DEBUG3", "DEBUG4"},
 	}
 
@@ -199,7 +199,7 @@ func TestLoadingConfigSeverityLogsStrict(t *testing.T) {
 		expected *Config
 	}{
 		{
-			id: component.NewIDWithName("filter", "include"),
+			id: component.MustNewIDWithName("filter", "include"),
 			expected: &Config{
 				ErrorMode: ottl.PropagateError,
 				Logs: LogFilters{
@@ -207,7 +207,7 @@ func TestLoadingConfigSeverityLogsStrict(t *testing.T) {
 				},
 			},
 		}, {
-			id: component.NewIDWithName("filter", "exclude"),
+			id: component.MustNewIDWithName("filter", "exclude"),
 			expected: &Config{
 				ErrorMode: ottl.PropagateError,
 				Logs: LogFilters{
@@ -215,7 +215,7 @@ func TestLoadingConfigSeverityLogsStrict(t *testing.T) {
 				},
 			},
 		}, {
-			id: component.NewIDWithName("filter", "includeexclude"),
+			id: component.MustNewIDWithName("filter", "includeexclude"),
 			expected: &Config{
 				ErrorMode: ottl.PropagateError,
 				Logs: LogFilters{
@@ -244,12 +244,12 @@ func TestLoadingConfigSeverityLogsStrict(t *testing.T) {
 // TestLoadingConfigSeverityLogsRegexp tests loading testdata/config_logs_severity_regexp.yaml
 func TestLoadingConfigSeverityLogsRegexp(t *testing.T) {
 	testDataLogPropertiesInclude := &LogMatchProperties{
-		LogMatchType:  Regexp,
+		LogMatchType:  regexpType,
 		SeverityTexts: []string{"INFO[2-4]?"},
 	}
 
 	testDataLogPropertiesExclude := &LogMatchProperties{
-		LogMatchType:  Regexp,
+		LogMatchType:  regexpType,
 		SeverityTexts: []string{"DEBUG[2-4]?"},
 	}
 
@@ -261,7 +261,7 @@ func TestLoadingConfigSeverityLogsRegexp(t *testing.T) {
 		expected *Config
 	}{
 		{
-			id: component.NewIDWithName("filter", "include"),
+			id: component.MustNewIDWithName("filter", "include"),
 			expected: &Config{
 				ErrorMode: ottl.PropagateError,
 				Logs: LogFilters{
@@ -269,7 +269,7 @@ func TestLoadingConfigSeverityLogsRegexp(t *testing.T) {
 				},
 			},
 		}, {
-			id: component.NewIDWithName("filter", "exclude"),
+			id: component.MustNewIDWithName("filter", "exclude"),
 			expected: &Config{
 				ErrorMode: ottl.PropagateError,
 				Logs: LogFilters{
@@ -277,7 +277,7 @@ func TestLoadingConfigSeverityLogsRegexp(t *testing.T) {
 				},
 			},
 		}, {
-			id: component.NewIDWithName("filter", "includeexclude"),
+			id: component.MustNewIDWithName("filter", "includeexclude"),
 			expected: &Config{
 				ErrorMode: ottl.PropagateError,
 				Logs: LogFilters{
@@ -307,12 +307,12 @@ func TestLoadingConfigSeverityLogsRegexp(t *testing.T) {
 func TestLoadingConfigBodyLogsStrict(t *testing.T) {
 
 	testDataLogPropertiesInclude := &LogMatchProperties{
-		LogMatchType: Strict,
+		LogMatchType: strictType,
 		LogBodies:    []string{"This is an important event"},
 	}
 
 	testDataLogPropertiesExclude := &LogMatchProperties{
-		LogMatchType: Strict,
+		LogMatchType: strictType,
 		LogBodies:    []string{"This event is not important"},
 	}
 
@@ -324,7 +324,7 @@ func TestLoadingConfigBodyLogsStrict(t *testing.T) {
 		expected *Config
 	}{
 		{
-			id: component.NewIDWithName("filter", "include"),
+			id: component.MustNewIDWithName("filter", "include"),
 			expected: &Config{
 				ErrorMode: ottl.PropagateError,
 				Logs: LogFilters{
@@ -332,7 +332,7 @@ func TestLoadingConfigBodyLogsStrict(t *testing.T) {
 				},
 			},
 		}, {
-			id: component.NewIDWithName("filter", "exclude"),
+			id: component.MustNewIDWithName("filter", "exclude"),
 			expected: &Config{
 				ErrorMode: ottl.PropagateError,
 				Logs: LogFilters{
@@ -340,7 +340,7 @@ func TestLoadingConfigBodyLogsStrict(t *testing.T) {
 				},
 			},
 		}, {
-			id: component.NewIDWithName("filter", "includeexclude"),
+			id: component.MustNewIDWithName("filter", "includeexclude"),
 			expected: &Config{
 				ErrorMode: ottl.PropagateError,
 				Logs: LogFilters{
@@ -370,12 +370,12 @@ func TestLoadingConfigBodyLogsStrict(t *testing.T) {
 func TestLoadingConfigBodyLogsRegexp(t *testing.T) {
 
 	testDataLogPropertiesInclude := &LogMatchProperties{
-		LogMatchType: Regexp,
+		LogMatchType: regexpType,
 		LogBodies:    []string{"^IMPORTANT:"},
 	}
 
 	testDataLogPropertiesExclude := &LogMatchProperties{
-		LogMatchType: Regexp,
+		LogMatchType: regexpType,
 		LogBodies:    []string{"^MINOR:"},
 	}
 
@@ -387,7 +387,7 @@ func TestLoadingConfigBodyLogsRegexp(t *testing.T) {
 		expected *Config
 	}{
 		{
-			id: component.NewIDWithName("filter", "include"),
+			id: component.MustNewIDWithName("filter", "include"),
 			expected: &Config{
 				ErrorMode: ottl.PropagateError,
 				Logs: LogFilters{
@@ -395,7 +395,7 @@ func TestLoadingConfigBodyLogsRegexp(t *testing.T) {
 				},
 			},
 		}, {
-			id: component.NewIDWithName("filter", "exclude"),
+			id: component.MustNewIDWithName("filter", "exclude"),
 			expected: &Config{
 				ErrorMode: ottl.PropagateError,
 				Logs: LogFilters{
@@ -403,7 +403,7 @@ func TestLoadingConfigBodyLogsRegexp(t *testing.T) {
 				},
 			},
 		}, {
-			id: component.NewIDWithName("filter", "includeexclude"),
+			id: component.MustNewIDWithName("filter", "includeexclude"),
 			expected: &Config{
 				ErrorMode: ottl.PropagateError,
 				Logs: LogFilters{
@@ -452,7 +452,7 @@ func TestLoadingConfigMinSeverityNumberLogs(t *testing.T) {
 		expected *Config
 	}{
 		{
-			id: component.NewIDWithName("filter", "include"),
+			id: component.MustNewIDWithName("filter", "include"),
 			expected: &Config{
 				ErrorMode: ottl.PropagateError,
 				Logs: LogFilters{
@@ -460,7 +460,7 @@ func TestLoadingConfigMinSeverityNumberLogs(t *testing.T) {
 				},
 			},
 		}, {
-			id: component.NewIDWithName("filter", "exclude"),
+			id: component.MustNewIDWithName("filter", "exclude"),
 			expected: &Config{
 				ErrorMode: ottl.PropagateError,
 				Logs: LogFilters{
@@ -468,7 +468,7 @@ func TestLoadingConfigMinSeverityNumberLogs(t *testing.T) {
 				},
 			},
 		}, {
-			id: component.NewIDWithName("filter", "includeexclude"),
+			id: component.MustNewIDWithName("filter", "includeexclude"),
 			expected: &Config{
 				ErrorMode: ottl.PropagateError,
 				Logs: LogFilters{
@@ -521,7 +521,7 @@ func TestLoadingConfigRegexp(t *testing.T) {
 		expected component.Config
 	}{
 		{
-			id: component.NewIDWithName("filter", "include"),
+			id: component.MustNewIDWithName("filter", "include"),
 			expected: &Config{
 				ErrorMode: ottl.PropagateError,
 				Metrics: MetricFilters{
@@ -529,7 +529,7 @@ func TestLoadingConfigRegexp(t *testing.T) {
 				},
 			},
 		}, {
-			id: component.NewIDWithName("filter", "exclude"),
+			id: component.MustNewIDWithName("filter", "exclude"),
 			expected: &Config{
 				ErrorMode: ottl.PropagateError,
 				Metrics: MetricFilters{
@@ -537,7 +537,7 @@ func TestLoadingConfigRegexp(t *testing.T) {
 				},
 			},
 		}, {
-			id: component.NewIDWithName("filter", "unlimitedcache"),
+			id: component.MustNewIDWithName("filter", "unlimitedcache"),
 			expected: &Config{
 				ErrorMode: ottl.PropagateError,
 				Metrics: MetricFilters{
@@ -551,7 +551,7 @@ func TestLoadingConfigRegexp(t *testing.T) {
 				},
 			},
 		}, {
-			id: component.NewIDWithName("filter", "limitedcache"),
+			id: component.MustNewIDWithName("filter", "limitedcache"),
 			expected: &Config{
 				ErrorMode: ottl.PropagateError,
 				Metrics: MetricFilters{
@@ -592,7 +592,7 @@ func TestLoadingSpans(t *testing.T) {
 		expected component.Config
 	}{
 		{
-			id: component.NewIDWithName("filter", "spans"),
+			id: component.MustNewIDWithName("filter", "spans"),
 			expected: &Config{
 				ErrorMode: ottl.PropagateError,
 				Spans: filterconfig.MatchConfig{
@@ -642,7 +642,7 @@ func TestLoadingConfigExpr(t *testing.T) {
 		expected component.Config
 	}{
 		{
-			id: component.NewIDWithName("filter", "empty"),
+			id: component.MustNewIDWithName("filter", "empty"),
 			expected: &Config{
 				ErrorMode: ottl.PropagateError,
 				Metrics: MetricFilters{
@@ -653,7 +653,7 @@ func TestLoadingConfigExpr(t *testing.T) {
 			},
 		},
 		{
-			id: component.NewIDWithName("filter", "include"),
+			id: component.MustNewIDWithName("filter", "include"),
 			expected: &Config{
 				ErrorMode: ottl.PropagateError,
 				Metrics: MetricFilters{
@@ -668,7 +668,7 @@ func TestLoadingConfigExpr(t *testing.T) {
 			},
 		},
 		{
-			id: component.NewIDWithName("filter", "exclude"),
+			id: component.MustNewIDWithName("filter", "exclude"),
 			expected: &Config{
 				ErrorMode: ottl.PropagateError,
 				Metrics: MetricFilters{
@@ -683,7 +683,7 @@ func TestLoadingConfigExpr(t *testing.T) {
 			},
 		},
 		{
-			id: component.NewIDWithName("filter", "includeexclude"),
+			id: component.MustNewIDWithName("filter", "includeexclude"),
 			expected: &Config{
 				ErrorMode: ottl.PropagateError,
 				Metrics: MetricFilters{
@@ -842,7 +842,7 @@ func TestLoadingConfigOTTL(t *testing.T) {
 		errorMessage string
 	}{
 		{
-			id: component.NewIDWithName("filter", "ottl"),
+			id: component.MustNewIDWithName("filter", "ottl"),
 			expected: &Config{
 				ErrorMode: ottl.IgnoreError,
 				Traces: TraceFilters{
@@ -869,7 +869,7 @@ func TestLoadingConfigOTTL(t *testing.T) {
 			},
 		},
 		{
-			id: component.NewIDWithName("filter", "multiline"),
+			id: component.MustNewIDWithName("filter", "multiline"),
 			expected: &Config{
 				ErrorMode: ottl.PropagateError,
 				Traces: TraceFilters{

@@ -33,11 +33,11 @@ func NewFactory() receiver.Factory {
 func createDefaultConfig() component.Config {
 	cfg := scraperhelper.NewDefaultScraperControllerSettings(metadata.Type)
 	cfg.CollectionInterval = defaultCollectionInterval
+	cfg.Timeout = defaultTimeout
 
 	return &Config{
 		ScraperControllerSettings: cfg,
-		Timeout:                   defaultTimeout,
-		NetAddr: confignet.NetAddr{
+		AddrConfig: confignet.AddrConfig{
 			Endpoint: defaultEndpoint,
 		},
 		MetricsBuilderConfig: metadata.DefaultMetricsBuilderConfig(),
@@ -54,7 +54,7 @@ func createMetricsReceiver(
 
 	ms := newMemcachedScraper(params, cfg)
 
-	scraper, err := scraperhelper.NewScraper(metadata.Type, ms.scrape)
+	scraper, err := scraperhelper.NewScraper(metadata.Type.String(), ms.scrape)
 	if err != nil {
 		return nil, err
 	}

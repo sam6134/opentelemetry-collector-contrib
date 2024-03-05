@@ -17,19 +17,20 @@ import (
 	"github.com/julienschmidt/httprouter"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/consumer"
-	"go.opentelemetry.io/collector/obsreport"
 	"go.opentelemetry.io/collector/receiver"
+	"go.opentelemetry.io/collector/receiver/receiverhelper"
 	"go.uber.org/zap"
 
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/webhookeventreceiver/internal/metadata"
 )
 
 var (
-	errNilLogsConsumer      = errors.New("missing a logs consumer")
-	errMissingEndpoint      = errors.New("missing a receiver endpoint")
-	errInvalidRequestMethod = errors.New("invalid method. Valid method is POST")
-	errInvalidEncodingType  = errors.New("invalid encoding type")
-	errEmptyResponseBody    = errors.New("request body content length is zero")
+	errNilLogsConsumer       = errors.New("missing a logs consumer")
+	errMissingEndpoint       = errors.New("missing a receiver endpoint")
+	errInvalidRequestMethod  = errors.New("invalid method. Valid method is POST")
+	errInvalidEncodingType   = errors.New("invalid encoding type")
+	errEmptyResponseBody     = errors.New("request body content length is zero")
+	errMissingRequiredHeader = errors.New("request was missing required header or incorrect header value")
 )
 
 const healthyResponse = `{"text": "Webhookevent receiver is healthy"}`
@@ -40,7 +41,7 @@ type eventReceiver struct {
 	logConsumer consumer.Logs
 	server      *http.Server
 	shutdownWG  sync.WaitGroup
-	obsrecv     *obsreport.Receiver
+	obsrecv     *receiverhelper.ObsReport
 	gzipPool    *sync.Pool
 }
 
@@ -58,7 +59,7 @@ func newLogsReceiver(params receiver.CreateSettings, cfg Config, consumer consum
 		transport = "https"
 	}
 
-	obsrecv, err := obsreport.NewReceiver(obsreport.ReceiverSettings{
+	obsrecv, err := receiverhelper.NewObsReport(receiverhelper.ObsReportSettings{
 		ReceiverID:             params.ID,
 		Transport:              transport,
 		ReceiverCreateSettings: params,
@@ -74,7 +75,7 @@ func newLogsReceiver(params receiver.CreateSettings, cfg Config, consumer consum
 		cfg:         &cfg,
 		logConsumer: consumer,
 		obsrecv:     obsrecv,
-		gzipPool:    &sync.Pool{New: func() interface{} { return new(gzip.Reader) }},
+		gzipPool:    &sync.Pool{New: func() any { return new(gzip.Reader) }},
 	}
 
 	return er, nil
@@ -88,7 +89,7 @@ func (er *eventReceiver) Start(_ context.Context, host component.Host) error {
 	}
 
 	// create listener from config
-	ln, err := er.cfg.HTTPServerSettings.ToListener()
+	ln, err := er.cfg.ServerConfig.ToListener()
 	if err != nil {
 		return err
 	}
@@ -100,7 +101,7 @@ func (er *eventReceiver) Start(_ context.Context, host component.Host) error {
 	router.GET(er.cfg.HealthPath, er.handleHealthCheck)
 
 	// webhook server standup and configuration
-	er.server, err = er.cfg.HTTPServerSettings.ToServer(host, er.settings.TelemetrySettings, router)
+	er.server, err = er.cfg.ServerConfig.ToServer(host, er.settings.TelemetrySettings, router)
 	if err != nil {
 		return err
 	}
@@ -124,7 +125,7 @@ func (er *eventReceiver) Start(_ context.Context, host component.Host) error {
 	go func() {
 		defer er.shutdownWG.Done()
 		if errHTTP := er.server.Serve(ln); !errors.Is(errHTTP, http.ErrServerClosed) && errHTTP != nil {
-			host.ReportFatalError(errHTTP)
+			er.settings.TelemetrySettings.ReportStatus(component.NewFatalErrorEvent(errHTTP))
 		}
 	}()
 
@@ -153,6 +154,14 @@ func (er *eventReceiver) handleReq(w http.ResponseWriter, r *http.Request, _ htt
 		return
 	}
 
+	if er.cfg.RequiredHeader.Key != "" {
+		requiredHeaderValue := r.Header.Get(er.cfg.RequiredHeader.Key)
+		if requiredHeaderValue != er.cfg.RequiredHeader.Value {
+			er.failBadReq(ctx, w, http.StatusUnauthorized, errMissingRequiredHeader)
+			return
+		}
+	}
+
 	encoding := r.Header.Get("Content-Encoding")
 	// only support gzip if encoding header is set.
 	if encoding != "" && encoding != "gzip" {
@@ -161,7 +170,7 @@ func (er *eventReceiver) handleReq(w http.ResponseWriter, r *http.Request, _ htt
 	}
 
 	if r.ContentLength == 0 {
-		er.obsrecv.EndLogsOp(ctx, metadata.Type, 0, nil)
+		er.obsrecv.EndLogsOp(ctx, metadata.Type.String(), 0, nil)
 		er.failBadReq(ctx, w, http.StatusBadRequest, errEmptyResponseBody)
 	}
 
@@ -190,10 +199,10 @@ func (er *eventReceiver) handleReq(w http.ResponseWriter, r *http.Request, _ htt
 
 	if consumerErr != nil {
 		er.failBadReq(ctx, w, http.StatusInternalServerError, consumerErr)
-		er.obsrecv.EndLogsOp(ctx, metadata.Type, numLogs, nil)
+		er.obsrecv.EndLogsOp(ctx, metadata.Type.String(), numLogs, nil)
 	} else {
 		w.WriteHeader(http.StatusOK)
-		er.obsrecv.EndLogsOp(ctx, metadata.Type, numLogs, nil)
+		er.obsrecv.EndLogsOp(ctx, metadata.Type.String(), numLogs, nil)
 	}
 }
 

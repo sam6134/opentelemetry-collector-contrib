@@ -11,7 +11,6 @@ import (
 
 	"github.com/hashicorp/go-version"
 	"go.opentelemetry.io/collector/component"
-	"go.opentelemetry.io/collector/featuregate"
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/collector/pdata/pmetric"
 	"go.opentelemetry.io/collector/receiver"
@@ -30,14 +29,6 @@ var (
 		v, _ := version.NewVersion("7.13")
 		return v
 	}()
-
-	_ = featuregate.GlobalRegistry().MustRegister(
-		"receiver.elasticsearch.emitNodeVersionAttr",
-		featuregate.StageStable,
-		featuregate.WithRegisterToVersion("0.82.0"),
-		featuregate.WithRegisterDescription("All node metrics will be enriched with the node version resource attribute."),
-		featuregate.WithRegisterReferenceURL("https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/16847"),
-	)
 )
 
 var errUnknownClusterStatus = errors.New("unknown cluster status")
@@ -135,8 +126,10 @@ func (r *elasticsearchScraper) scrapeNodeMetrics(ctx context.Context, now pcommo
 		r.mb.RecordElasticsearchNodeFsDiskFreeDataPoint(now, info.FS.Total.FreeBytes)
 		r.mb.RecordElasticsearchNodeFsDiskTotalDataPoint(now, info.FS.Total.TotalBytes)
 
-		r.mb.RecordElasticsearchNodeDiskIoReadDataPoint(now, info.FS.IOStats.Total.ReadBytes)
-		r.mb.RecordElasticsearchNodeDiskIoWriteDataPoint(now, info.FS.IOStats.Total.WriteBytes)
+		if info.FS.IOStats != nil {
+			r.mb.RecordElasticsearchNodeDiskIoReadDataPoint(now, info.FS.IOStats.Total.ReadBytes)
+			r.mb.RecordElasticsearchNodeDiskIoWriteDataPoint(now, info.FS.IOStats.Total.WriteBytes)
+		}
 
 		r.mb.RecordElasticsearchNodeClusterIoDataPoint(now, info.TransportStats.ReceivedBytes, metadata.AttributeDirectionReceived)
 		r.mb.RecordElasticsearchNodeClusterIoDataPoint(now, info.TransportStats.SentBytes, metadata.AttributeDirectionSent)
@@ -320,17 +313,15 @@ func (r *elasticsearchScraper) scrapeNodeMetrics(ctx context.Context, now pcommo
 			now, info.Indices.SegmentsStats.TermsMemoryInBy, metadata.AttributeSegmentsMemoryObjectTypeTerm,
 		)
 
-		// Define nodeMetadata slice to store all metadata. New metadata can be easily introduced by appending to the slice.
-		nodeMetadata := []metadata.ResourceMetricsOption{
-			metadata.WithElasticsearchClusterName(nodeStats.ClusterName),
-			metadata.WithElasticsearchNodeName(info.Name),
-		}
+		rb := r.mb.NewResourceBuilder()
+		rb.SetElasticsearchClusterName(nodeStats.ClusterName)
+		rb.SetElasticsearchNodeName(info.Name)
 
 		if node, ok := nodesInfo.Nodes[id]; ok {
-			nodeMetadata = append(nodeMetadata, metadata.WithElasticsearchNodeVersion(node.Version))
+			rb.SetElasticsearchNodeVersion(node.Version)
 		}
 
-		r.mb.EmitForResource(nodeMetadata...)
+		r.mb.EmitForResource(metadata.WithResource(rb.Emit()))
 	}
 }
 
@@ -342,7 +333,9 @@ func (r *elasticsearchScraper) scrapeClusterMetrics(ctx context.Context, now pco
 	r.scrapeClusterHealthMetrics(ctx, now, errs)
 	r.scrapeClusterStatsMetrics(ctx, now, errs)
 
-	r.mb.EmitForResource(metadata.WithElasticsearchClusterName(r.clusterName))
+	rb := r.mb.NewResourceBuilder()
+	rb.SetElasticsearchClusterName(r.clusterName)
+	r.mb.EmitForResource(metadata.WithResource(rb.Emit()))
 }
 
 func (r *elasticsearchScraper) scrapeClusterStatsMetrics(ctx context.Context, now pcommon.Timestamp, errs *scrapererror.ScrapeErrors) {
@@ -677,5 +670,8 @@ func (r *elasticsearchScraper) scrapeOneIndexMetrics(now pcommon.Timestamp, name
 		now, stats.Total.DocumentStats.ActiveCount, metadata.AttributeDocumentStateActive, metadata.AttributeIndexAggregationTypeTotal,
 	)
 
-	r.mb.EmitForResource(metadata.WithElasticsearchIndexName(name), metadata.WithElasticsearchClusterName(r.clusterName))
+	rb := r.mb.NewResourceBuilder()
+	rb.SetElasticsearchIndexName(name)
+	rb.SetElasticsearchClusterName(r.clusterName)
+	r.mb.EmitForResource(metadata.WithResource(rb.Emit()))
 }

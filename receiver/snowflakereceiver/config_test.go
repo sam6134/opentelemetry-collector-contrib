@@ -37,50 +37,55 @@ func TestValidateConfig(t *testing.T) {
 			desc:   "Missing username all else present",
 			expect: errMissingUsername,
 			conf: Config{
-				Username:  "",
-				Password:  "password",
-				Account:   "account",
-				Warehouse: "warehouse",
+				Username:                  "",
+				Password:                  "password",
+				Account:                   "account",
+				Warehouse:                 "warehouse",
+				ScraperControllerSettings: scraperhelper.NewDefaultScraperControllerSettings(metadata.Type),
 			},
 		},
 		{
 			desc:   "Missing password all else present",
 			expect: errMissingPassword,
 			conf: Config{
-				Username:  "username",
-				Password:  "",
-				Account:   "account",
-				Warehouse: "warehouse",
+				Username:                  "username",
+				Password:                  "",
+				Account:                   "account",
+				Warehouse:                 "warehouse",
+				ScraperControllerSettings: scraperhelper.NewDefaultScraperControllerSettings(metadata.Type),
 			},
 		},
 		{
 			desc:   "Missing account all else present",
 			expect: errMissingAccount,
 			conf: Config{
-				Username:  "username",
-				Password:  "password",
-				Account:   "",
-				Warehouse: "warehouse",
+				Username:                  "username",
+				Password:                  "password",
+				Account:                   "",
+				Warehouse:                 "warehouse",
+				ScraperControllerSettings: scraperhelper.NewDefaultScraperControllerSettings(metadata.Type),
 			},
 		},
 		{
 			desc:   "Missing warehouse all else present",
 			expect: errMissingWarehouse,
 			conf: Config{
-				Username:  "username",
-				Password:  "password",
-				Account:   "account",
-				Warehouse: "",
+				Username:                  "username",
+				Password:                  "password",
+				Account:                   "account",
+				Warehouse:                 "",
+				ScraperControllerSettings: scraperhelper.NewDefaultScraperControllerSettings(metadata.Type),
 			},
 		},
 		{
 			desc:   "Missing multiple check multierror",
 			expect: multierror,
 			conf: Config{
-				Username:  "username",
-				Password:  "",
-				Account:   "account",
-				Warehouse: "",
+				Username:                  "username",
+				Password:                  "",
+				Account:                   "account",
+				Warehouse:                 "",
+				ScraperControllerSettings: scraperhelper.NewDefaultScraperControllerSettings(metadata.Type),
 			},
 		},
 	}
@@ -133,7 +138,7 @@ func TestLoadConfig(t *testing.T) {
 	require.NoError(t, component.UnmarshalConfig(cmNoStr, cfg))
 	assert.NoError(t, component.ValidateConfig(cfg))
 
-	diff := cmp.Diff(expected, cfg, cmpopts.IgnoreUnexported(metadata.MetricConfig{}))
+	diff := cmp.Diff(expected, cfg, cmpopts.IgnoreUnexported(metadata.MetricConfig{}), cmpopts.IgnoreUnexported(metadata.ResourceAttributeConfig{}))
 	if diff != "" {
 		t.Errorf("config mismatch (-expected / +actual)\n%s", diff)
 	}

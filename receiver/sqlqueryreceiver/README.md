@@ -6,7 +6,9 @@
 | Stability     | [alpha]: metrics   |
 |               | [development]: logs   |
 | Distributions | [contrib], [observiq], [splunk], [sumo] |
-| Issues        | ![Open issues](https://img.shields.io/github/issues-search/open-telemetry/opentelemetry-collector-contrib?query=is%3Aissue%20is%3Aopen%20label%3Areceiver%2Fsqlquery%20&label=open&color=orange&logo=opentelemetry) ![Closed issues](https://img.shields.io/github/issues-search/open-telemetry/opentelemetry-collector-contrib?query=is%3Aissue%20is%3Aclosed%20label%3Areceiver%2Fsqlquery%20&label=closed&color=blue&logo=opentelemetry) |
+| Issues        | [![Open issues](https://img.shields.io/github/issues-search/open-telemetry/opentelemetry-collector-contrib?query=is%3Aissue%20is%3Aopen%20label%3Areceiver%2Fsqlquery%20&label=open&color=orange&logo=opentelemetry)](https://github.com/open-telemetry/opentelemetry-collector-contrib/issues?q=is%3Aopen+is%3Aissue+label%3Areceiver%2Fsqlquery) [![Closed issues](https://img.shields.io/github/issues-search/open-telemetry/opentelemetry-collector-contrib?query=is%3Aissue%20is%3Aclosed%20label%3Areceiver%2Fsqlquery%20&label=closed&color=blue&logo=opentelemetry)](https://github.com/open-telemetry/opentelemetry-collector-contrib/issues?q=is%3Aclosed+is%3Aissue+label%3Areceiver%2Fsqlquery) |
+| [Code Owners](https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/main/CONTRIBUTING.md#becoming-a-code-owner)    | [@dmitryax](https://www.github.com/dmitryax), [@crobert-1](https://www.github.com/crobert-1) |
+| Emeritus      | [@pmcollins](https://www.github.com/pmcollins) |
 
 [alpha]: https://github.com/open-telemetry/opentelemetry-collector#alpha
 [development]: https://github.com/open-telemetry/opentelemetry-collector#development
@@ -34,6 +36,9 @@ The configuration supports the following top-level fields:
 - `queries`(required): A list of queries, where a query is a sql statement and one or more `logs` and/or `metrics` sections (details below).
 - `collection_interval`(optional): The time interval between query executions. Defaults to _10s_.
 - `storage` (optional, default `""`): The ID of a [storage][storage_extension] extension to be used to [track processed results](#tracking-processed-results).
+- `telemetry` (optional) Defines settings for the component's own telemetry - logs, metrics or traces.
+  - `telemetry.logs` (optional) Defines settings for the component's own logs.
+    - `telemetry.logs.query` (optional, default `false`) If set to `true`, every time a SQL query is run, the text of the query and the values of its parameters will be logged together with the debug log `"Running query"`.
 
 [storage_extension]: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/extension/storage/filestorage
 
@@ -194,3 +199,8 @@ Oracle DB driver to connect and query the same table schema and contents as the 
 The Oracle DB driver documentation can be found [here.](https://github.com/sijms/go-ora)
 Another usage example is the `go_ora`
 example [here.](https://blogs.oracle.com/developers/post/connecting-a-go-application-to-oracle-database)
+
+#### MySQL Datasource Format Example
+
+The `datasource` format for MySQL works as follows:  
+`user:password@tcp(host:port)/databasename`  

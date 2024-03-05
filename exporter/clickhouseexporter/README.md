@@ -5,7 +5,8 @@
 | ------------- |-----------|
 | Stability     | [alpha]: traces, metrics, logs   |
 | Distributions | [contrib] |
-| Issues        | ![Open issues](https://img.shields.io/github/issues-search/open-telemetry/opentelemetry-collector-contrib?query=is%3Aissue%20is%3Aopen%20label%3Aexporter%2Fclickhouse%20&label=open&color=orange&logo=opentelemetry) ![Closed issues](https://img.shields.io/github/issues-search/open-telemetry/opentelemetry-collector-contrib?query=is%3Aissue%20is%3Aclosed%20label%3Aexporter%2Fclickhouse%20&label=closed&color=blue&logo=opentelemetry) |
+| Issues        | [![Open issues](https://img.shields.io/github/issues-search/open-telemetry/opentelemetry-collector-contrib?query=is%3Aissue%20is%3Aopen%20label%3Aexporter%2Fclickhouse%20&label=open&color=orange&logo=opentelemetry)](https://github.com/open-telemetry/opentelemetry-collector-contrib/issues?q=is%3Aopen+is%3Aissue+label%3Aexporter%2Fclickhouse) [![Closed issues](https://img.shields.io/github/issues-search/open-telemetry/opentelemetry-collector-contrib?query=is%3Aissue%20is%3Aclosed%20label%3Aexporter%2Fclickhouse%20&label=closed&color=blue&logo=opentelemetry)](https://github.com/open-telemetry/opentelemetry-collector-contrib/issues?q=is%3Aclosed+is%3Aissue+label%3Aexporter%2Fclickhouse) |
+| [Code Owners](https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/main/CONTRIBUTING.md#becoming-a-code-owner)    | [@hanjm](https://www.github.com/hanjm), [@dmitryax](https://www.github.com/dmitryax), [@Frapschen](https://www.github.com/Frapschen) |
 
 [alpha]: https://github.com/open-telemetry/opentelemetry-collector#alpha
 [contrib]: https://github.com/open-telemetry/opentelemetry-collector-releases/tree/main/distributions/otelcol-contrib
@@ -139,7 +140,7 @@ SELECT Timestamp as log_time,
        toString(Links.TraceId)
 FROM otel_traces
 WHERE ServiceName = 'clickhouse-exporter'
-  AND SpanAttributes['peer.service'] = 'tracegen-server'
+  AND SpanAttributes['peer.service'] = 'telemetrygen-server'
   AND Timestamp >= NOW() - INTERVAL 1 HOUR
 Limit 100;
 ```
@@ -278,7 +279,8 @@ Connection options:
 
 - `username` (default = ): The authentication username.
 - `password` (default = ): The authentication password.
-- `ttl_days` (default = 0): The data time-to-live in days, 0 means no ttl.
+- `ttl_days` (default = 0): **Deprecated: Use 'ttl' instead.**  The data time-to-live in days, 0 means no ttl.
+- `ttl` (default = 0): The data time-to-live example 30m, 48h. Also, 0 means no ttl.
 - `database` (default = otel): The database name.
 - `connection_params` (default = {}). Params is the extra connection parameters with map format.
 
@@ -310,7 +312,7 @@ use the `https` scheme.
 
 This example shows how to configure the exporter to send data to a ClickHouse server.
 It uses the native protocol without TLS. The exporter will create the database and tables if they don't exist.
-The data is stored for 3 days.
+The data is stored for 72 hours (3 days).
 
 ```yaml
 receivers:
@@ -323,7 +325,7 @@ exporters:
   clickhouse:
     endpoint: tcp://127.0.0.1:9000?dial_timeout=10s&compress=lz4
     database: otel
-    ttl_days: 3
+    ttl: 72h
     logs_table_name: otel_logs
     traces_table_name: otel_traces
     metrics_table_name: otel_metrics

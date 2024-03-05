@@ -9,8 +9,7 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/antonmedv/expr"
-	"github.com/antonmedv/expr/vm"
+	"github.com/expr-lang/expr/vm"
 	"go.uber.org/zap"
 
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/stanza/entry"
@@ -56,7 +55,7 @@ func (c Config) Build(logger *zap.SugaredLogger) (operator.Operator, error) {
 		return nil, err
 	}
 
-	compiledExpression, err := expr.Compile(c.Expression, expr.AsBool(), expr.AllowUndefinedVariables())
+	compiledExpression, err := helper.ExprCompileBool(c.Expression)
 	if err != nil {
 		return nil, fmt.Errorf("failed to compile expression '%s': %w", c.Expression, err)
 	}

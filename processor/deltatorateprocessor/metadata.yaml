@@ -5,3 +5,7 @@ status:
   stability:
     development: [metrics]
   distributions: [contrib, observiq, sumo, aws]
+  codeowners:
+    active: [Aneurysm9]
+tests:
+  config:

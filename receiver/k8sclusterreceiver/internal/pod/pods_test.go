@@ -12,6 +12,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/collector/receiver/receivertest"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -21,9 +22,10 @@ import (
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
-	"github.com/open-telemetry/opentelemetry-collector-contrib/internal/coreinternal/golden"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/experimentalmetricmetadata"
+	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/golden"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatatest/pmetrictest"
+	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/k8sclusterreceiver/internal/gvk"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/k8sclusterreceiver/internal/metadata"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/k8sclusterreceiver/internal/testutils"
 )
@@ -41,8 +43,38 @@ func TestPodAndContainerMetricsReportCPUMetrics(t *testing.T) {
 		testutils.NewPodStatusWithContainer("container-name", containerIDWithPreifx("container-id")),
 	)
 
-	m := GetMetrics(receivertest.NewNopCreateSettings(), pod)
+	ts := pcommon.Timestamp(time.Now().UnixNano())
+	mb := metadata.NewMetricsBuilder(metadata.DefaultMetricsBuilderConfig(), receivertest.NewNopCreateSettings())
+	RecordMetrics(zap.NewNop(), mb, pod, ts)
+	m := mb.Emit()
 	expected, err := golden.ReadMetrics(filepath.Join("testdata", "expected.yaml"))
+	require.NoError(t, err)
+	require.NoError(t, pmetrictest.CompareMetrics(expected, m,
+		pmetrictest.IgnoreTimestamp(),
+		pmetrictest.IgnoreStartTimestamp(),
+		pmetrictest.IgnoreResourceMetricsOrder(),
+		pmetrictest.IgnoreMetricsOrder(),
+		pmetrictest.IgnoreScopeMetricsOrder(),
+	),
+	)
+}
+
+func TestPodStatusReasonAndContainerMetricsReportCPUMetrics(t *testing.T) {
+	pod := testutils.NewPodWithContainer(
+		"1",
+		testutils.NewPodSpecWithContainer("container-name"),
+		testutils.NewEvictedTerminatedPodStatusWithContainer("container-name", containerIDWithPreifx("container-id")),
+	)
+
+	mbc := metadata.DefaultMetricsBuilderConfig()
+	mbc.Metrics.K8sPodStatusReason.Enabled = true
+	mbc.ResourceAttributes.K8sPodQosClass.Enabled = true
+	ts := pcommon.Timestamp(time.Now().UnixNano())
+	mb := metadata.NewMetricsBuilder(mbc, receivertest.NewNopCreateSettings())
+	RecordMetrics(zap.NewNop(), mb, pod, ts)
+	m := mb.Emit()
+
+	expected, err := golden.ReadMetrics(filepath.Join("testdata", "expected_evicted.yaml"))
 	require.NoError(t, err)
 	require.NoError(t, pmetrictest.CompareMetrics(expected, m,
 		pmetrictest.IgnoreTimestamp(),
@@ -210,6 +242,7 @@ func expectedKubernetesMetadata(to testCaseOptions) map[experimentalmetricmetada
 
 	out := map[experimentalmetricmetadata.ResourceID]*metadata.KubernetesMetadata{
 		experimentalmetricmetadata.ResourceID(podUIDLabel): {
+			EntityType:    "k8s.pod",
 			ResourceIDKey: "k8s.pod.uid",
 			ResourceID:    experimentalmetricmetadata.ResourceID(podUIDLabel),
 			Metadata: map[string]string{
@@ -247,20 +280,20 @@ func expectedKubernetesMetadata(to testCaseOptions) map[experimentalmetricmetada
 }
 
 func mockMetadataStore(to testCaseOptions) *metadata.Store {
-	ms := &metadata.Store{}
+	ms := metadata.NewStore()
 
 	if to.wantNilCache {
 		return ms
 	}
 
 	store := &testutils.MockStore{
-		Cache:   map[string]interface{}{},
+		Cache:   map[string]any{},
 		WantErr: to.wantErrFromCache,
 	}
 
 	switch to.kind {
 	case "Job":
-		ms.Jobs = store
+		ms.Setup(gvk.Job, store)
 		if !to.emptyCache {
 			if to.withParentOR {
 				store.Cache["test-namespace/test-job-0"] = testutils.WithOwnerReferences(
@@ -278,7 +311,7 @@ func mockMetadataStore(to testCaseOptions) *metadata.Store {
 		}
 		return ms
 	case "ReplicaSet":
-		ms.ReplicaSets = store
+		ms.Setup(gvk.ReplicaSet, store)
 		if !to.emptyCache {
 			if to.withParentOR {
 				store.Cache["test-namespace/test-replicaset-0"] = testutils.WithOwnerReferences(

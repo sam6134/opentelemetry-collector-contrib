@@ -5,3 +5,9 @@ status:
   stability:
     beta: [traces, logs]
   distributions: [contrib, observiq]
+  codeowners:
+    active: [JaredTan95]
+
+tests:
+  config:
+    endpoints: [http://localhost:9200]

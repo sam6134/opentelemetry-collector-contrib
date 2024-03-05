@@ -31,13 +31,14 @@ func TestConfig(t *testing.T) {
 
 	assert.Equal(t,
 		&Config{
-			NetAddr: confignet.NetAddr{
+			AddrConfig: confignet.AddrConfig{
 				Endpoint:  "localhost:6379",
 				Transport: "tcp",
 			},
 			TLS: configtls.TLSClientSetting{
 				Insecure: true,
 			},
+			Username: "test",
 			Password: "test",
 			ScraperControllerSettings: scraperhelper.ScraperControllerSettings{
 				CollectionInterval: 10 * time.Second,

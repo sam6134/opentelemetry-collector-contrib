@@ -15,20 +15,33 @@ var distros = map[string]string{
 	"core":     "https://github.com/open-telemetry/opentelemetry-collector-releases/tree/main/distributions/otelcol",
 	"contrib":  "https://github.com/open-telemetry/opentelemetry-collector-releases/tree/main/distributions/otelcol-contrib",
 	"aws":      "https://github.com/aws-observability/aws-otel-collector",
+	"grafana":  "https://github.com/grafana/agent",
 	"observiq": "https://github.com/observIQ/observiq-otel-collector",
+	"redhat":   "https://github.com/os-observability/redhat-opentelemetry-collector",
 	"splunk":   "https://github.com/signalfx/splunk-otel-collector",
 	"sumo":     "https://github.com/SumoLogic/sumologic-otel-collector",
-	"redhat":   "https://github.com/os-observability/redhat-opentelemetry-collector",
+	"liatrio":  "https://github.com/liatrio/liatrio-otel-collector",
+}
+
+type Codeowners struct {
+	// Active codeowners
+	Active []string `mapstructure:"active"`
+	// Emeritus codeowners
+	Emeritus []string `mapstructure:"emeritus"`
+	// Whether new codeowners are being sought
+	SeekingNew bool `mapstructure:"seeking_new"`
 }
 
 type Status struct {
-	Stability     map[string][]string `mapstructure:"stability"`
-	Distributions []string            `mapstructure:"distributions"`
-	Class         string              `mapstructure:"class"`
-	Warnings      []string            `mapstructure:"warnings"`
+	Stability            map[string][]string `mapstructure:"stability"`
+	Distributions        []string            `mapstructure:"distributions"`
+	Class                string              `mapstructure:"class"`
+	Warnings             []string            `mapstructure:"warnings"`
+	Codeowners           *Codeowners         `mapstructure:"codeowners"`
+	UnsupportedPlatforms []string            `mapstructure:"unsupported_platforms"`
 }
 
-func (s Status) SortedDistributions() []string {
+func (s *Status) SortedDistributions() []string {
 	sorted := s.Distributions
 	sort.Slice(sorted, func(i, j int) bool {
 		if s.Distributions[i] == "core" {

@@ -5,4 +5,8 @@ status:
   stability:
     development: [metrics]
   distributions: [contrib, sumo]
-  
+  codeowners:
+    active: [jpkrohling, dgoscn, chrroberts-pure]
+
+tests:
+  config:

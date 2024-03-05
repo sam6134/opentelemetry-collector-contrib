@@ -13,10 +13,12 @@ import (
 	"go.opentelemetry.io/collector/receiver"
 	"go.opentelemetry.io/collector/receiver/scraperhelper"
 
+	"github.com/open-telemetry/opentelemetry-collector-contrib/internal/common/localhostgate"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/zookeeperreceiver/internal/metadata"
 )
 
 const (
+	defaultPort               = 2181
 	defaultCollectionInterval = 10 * time.Second
 	defaultTimeout            = 10 * time.Second
 )
@@ -32,13 +34,13 @@ func NewFactory() receiver.Factory {
 func createDefaultConfig() component.Config {
 	cfg := scraperhelper.NewDefaultScraperControllerSettings(metadata.Type)
 	cfg.CollectionInterval = defaultCollectionInterval
+	cfg.Timeout = defaultTimeout
 
 	return &Config{
 		ScraperControllerSettings: cfg,
-		TCPAddr: confignet.TCPAddr{
-			Endpoint: ":2181",
+		TCPAddrConfig: confignet.TCPAddrConfig{
+			Endpoint: localhostgate.EndpointForPort(defaultPort),
 		},
-		Timeout:              defaultTimeout,
 		MetricsBuilderConfig: metadata.DefaultMetricsBuilderConfig(),
 	}
 }
@@ -57,7 +59,7 @@ func createMetricsReceiver(
 	}
 
 	scrp, err := scraperhelper.NewScraper(
-		metadata.Type,
+		metadata.Type.String(),
 		zms.scrape,
 		scraperhelper.WithShutdown(zms.shutdown),
 	)

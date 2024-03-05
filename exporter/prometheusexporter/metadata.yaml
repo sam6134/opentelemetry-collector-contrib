@@ -4,4 +4,14 @@ status:
   class: exporter
   stability:
     beta: [metrics]
-  distributions: [core, contrib, observiq, sumo, aws, redhat]
+  distributions:
+  - core
+  - contrib
+  - aws
+  - grafana
+  - observiq
+  - redhat
+  - sumo
+  - liatrio
+  codeowners:
+    active: [Aneurysm9]

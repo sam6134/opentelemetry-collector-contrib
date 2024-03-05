@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/aws/aws-sdk-go/aws"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -38,4 +39,68 @@ func TestS3Key(t *testing.T) {
 	s3Key := getS3Key(tm, "keyprefix", "minute", "fileprefix", "logs", "json")
 	matched := re.MatchString(s3Key)
 	assert.Equal(t, true, matched)
+}
+
+func TestGetSessionConfigWithEndpoint(t *testing.T) {
+	const endpoint = "https://endpoint.com"
+	const region = "region"
+	config := &Config{
+		S3Uploader: S3UploaderConfig{
+			Region:   region,
+			Endpoint: endpoint,
+		},
+	}
+	sessionConfig := getSessionConfig(config)
+	assert.Equal(t, sessionConfig.Endpoint, aws.String(endpoint))
+	assert.Equal(t, sessionConfig.Region, aws.String(region))
+}
+
+func TestGetSessionConfigNoEndpoint(t *testing.T) {
+	const region = "region"
+	config := &Config{
+		S3Uploader: S3UploaderConfig{
+			Region: region,
+		},
+	}
+	sessionConfig := getSessionConfig(config)
+	assert.Empty(t, sessionConfig.Endpoint)
+	assert.Equal(t, sessionConfig.Region, aws.String(region))
+}
+
+func TestGetSessionConfigWithRoleArn(t *testing.T) {
+	const region = "region"
+	const roleArn = "arn:aws:iam::12345:role/s3-exportation-role"
+	config := &Config{
+		S3Uploader: S3UploaderConfig{
+			Region:  region,
+			RoleArn: roleArn,
+		},
+	}
+
+	sessionConfig := getSessionConfig(config)
+	sess, err := getSession(config, sessionConfig)
+
+	creds, _ := sess.Config.Credentials.Get()
+
+	assert.NoError(t, err)
+	assert.Equal(t, sessionConfig.Region, aws.String(region))
+	assert.Equal(t, creds.ProviderName, "AssumeRoleProvider")
+}
+
+func TestGetSessionConfigWithoutRoleArn(t *testing.T) {
+	const region = "region"
+	config := &Config{
+		S3Uploader: S3UploaderConfig{
+			Region: region,
+		},
+	}
+
+	sessionConfig := getSessionConfig(config)
+	sess, err := getSession(config, sessionConfig)
+
+	creds, _ := sess.Config.Credentials.Get()
+
+	assert.NoError(t, err)
+	assert.Equal(t, sessionConfig.Region, aws.String(region))
+	assert.NotEqual(t, creds.ProviderName, "AssumeRoleProvider")
 }

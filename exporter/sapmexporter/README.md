@@ -5,7 +5,8 @@
 | ------------- |-----------|
 | Stability     | [beta]: traces   |
 | Distributions | [contrib], [aws], [observiq], [splunk] |
-| Issues        | ![Open issues](https://img.shields.io/github/issues-search/open-telemetry/opentelemetry-collector-contrib?query=is%3Aissue%20is%3Aopen%20label%3Aexporter%2Fsapm%20&label=open&color=orange&logo=opentelemetry) ![Closed issues](https://img.shields.io/github/issues-search/open-telemetry/opentelemetry-collector-contrib?query=is%3Aissue%20is%3Aclosed%20label%3Aexporter%2Fsapm%20&label=closed&color=blue&logo=opentelemetry) |
+| Issues        | [![Open issues](https://img.shields.io/github/issues-search/open-telemetry/opentelemetry-collector-contrib?query=is%3Aissue%20is%3Aopen%20label%3Aexporter%2Fsapm%20&label=open&color=orange&logo=opentelemetry)](https://github.com/open-telemetry/opentelemetry-collector-contrib/issues?q=is%3Aopen+is%3Aissue+label%3Aexporter%2Fsapm) [![Closed issues](https://img.shields.io/github/issues-search/open-telemetry/opentelemetry-collector-contrib?query=is%3Aissue%20is%3Aclosed%20label%3Aexporter%2Fsapm%20&label=closed&color=blue&logo=opentelemetry)](https://github.com/open-telemetry/opentelemetry-collector-contrib/issues?q=is%3Aclosed+is%3Aissue+label%3Aexporter%2Fsapm) |
+| [Code Owners](https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/main/CONTRIBUTING.md#becoming-a-code-owner)    | [@dmitryax](https://www.github.com/dmitryax), [@atoulme](https://www.github.com/atoulme) |
 
 [beta]: https://github.com/open-telemetry/opentelemetry-collector#beta
 [contrib]: https://github.com/open-telemetry/opentelemetry-collector-releases/tree/main/distributions/otelcol-contrib
@@ -27,9 +28,9 @@ and some useful related utilities can be found [here](https://github.com/signalf
 
 The following configuration options are required:
 
-- `access_token` (no default): AccessToken is the authentication token provided by SignalFx or
-another backend that supports the SAPM proto. The SignalFx access token can be obtained from the
-web app. For details on how to do so please refer the documentation [here](https://docs.signalfx.com/en/latest/admin-guide/tokens.html#access-tokens).
+- `access_token` (no default): AccessToken is the authentication token provided by Splunk Observability Cloud or
+another backend that supports the SAPM proto. The access token can be obtained from the
+web app. For details on how to do so please refer the documentation [here](https://docs.splunk.com/observability/en/admin/authentication/authentication-tokens/manage-usage.html).
 - `endpoint` (no default): This is the destination to where traces will be sent to in SAPM
 format. It must be a full URL and include the scheme, port and path e.g,
 <!-- markdown-link-check-disable-line -->https://ingest.us0.signalfx.com/v2/trace. This can be pointed to the SignalFx 

@@ -6,6 +6,7 @@ package file // import "github.com/open-telemetry/opentelemetry-collector-contri
 import (
 	"go.uber.org/zap"
 
+	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/stanza/decode"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/stanza/fileconsumer"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/stanza/operator"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/stanza/operator/helper"
@@ -43,30 +44,11 @@ func (c Config) Build(logger *zap.SugaredLogger) (operator.Operator, error) {
 		return nil, err
 	}
 
-	var preEmitOptions []preEmitOption
-
-	if fileconsumer.AllowHeaderMetadataParsing.IsEnabled() {
-		preEmitOptions = append(preEmitOptions, setHeaderMetadata)
-	}
-
-	if c.IncludeFileName {
-		preEmitOptions = append(preEmitOptions, setFileName)
-	}
-	if c.IncludeFilePath {
-		preEmitOptions = append(preEmitOptions, setFilePath)
-	}
-	if c.IncludeFileNameResolved {
-		preEmitOptions = append(preEmitOptions, setFileNameResolved)
-	}
-	if c.IncludeFilePathResolved {
-		preEmitOptions = append(preEmitOptions, setFilePathResolved)
-	}
-
-	var toBody toBodyFunc = func(token []byte) interface{} {
+	var toBody toBodyFunc = func(token []byte) any {
 		return string(token)
 	}
-	if helper.IsNop(c.Config.Splitter.EncodingConfig.Encoding) {
-		toBody = func(token []byte) interface{} {
+	if decode.IsNop(c.Config.Encoding) {
+		toBody = func(token []byte) any {
 			copied := make([]byte, len(token))
 			copy(copied, token)
 			return copied
@@ -74,9 +56,8 @@ func (c Config) Build(logger *zap.SugaredLogger) (operator.Operator, error) {
 	}
 
 	input := &Input{
-		InputOperator:  inputOperator,
-		toBody:         toBody,
-		preEmitOptions: preEmitOptions,
+		InputOperator: inputOperator,
+		toBody:        toBody,
 	}
 
 	input.fileConsumer, err = c.Config.Build(logger, input.emit)

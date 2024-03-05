@@ -5,4 +5,7 @@ status:
   stability:
     beta: [metrics]
   distributions: [contrib, observiq, sumo]
-
+  codeowners:
+    active: [jacobmarble]
+tests:
+  config:

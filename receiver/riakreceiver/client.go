@@ -49,7 +49,7 @@ func newClient(cfg *Config, host component.Host, settings component.TelemetrySet
 		hostEndpoint: cfg.Endpoint,
 		creds: riakCredentials{
 			username: cfg.Username,
-			password: cfg.Password,
+			password: string(cfg.Password),
 		},
 		logger: logger,
 	}, nil
@@ -66,7 +66,7 @@ func (c *riakClient) GetStats(ctx context.Context) (*model.Stats, error) {
 	return stats, nil
 }
 
-func (c *riakClient) get(ctx context.Context, path string, respObj interface{}) error {
+func (c *riakClient) get(ctx context.Context, path string, respObj any) error {
 	// Construct endpoint and create request
 	url := c.hostEndpoint + path
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, http.NoBody)

@@ -6,6 +6,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"regexp"
 
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.uber.org/multierr"
@@ -28,9 +29,25 @@ func (md *metadata) Validate() error {
 	return errs
 }
 
+// typeRegexp is used to validate the type of a component.
+// A type must start with an ASCII alphabetic character and
+// can only contain ASCII alphanumeric characters and '_'.
+// We allow '/' for subcomponents.
+// This must be kept in sync with the regex in component/config.go.
+var typeRegexp = regexp.MustCompile(`^[a-zA-Z][0-9a-zA-Z_]*$`)
+
 func (md *metadata) validateType() error {
 	if md.Type == "" {
 		return errors.New("missing type")
+	}
+
+	if md.Parent != "" {
+		// subcomponents are allowed to have a '/' in their type.
+		return nil
+	}
+
+	if !typeRegexp.MatchString(md.Type) {
+		return fmt.Errorf("invalid character(s) in type %q", md.Type)
 	}
 	return nil
 }
@@ -48,8 +65,10 @@ func (md *metadata) validateStatus() error {
 	if err := md.Status.validateClass(); err != nil {
 		errs = multierr.Append(errs, err)
 	}
-	if err := md.Status.validateStability(); err != nil {
-		errs = multierr.Append(errs, err)
+	if md.Parent == "" {
+		if err := md.Status.validateStability(); err != nil {
+			errs = multierr.Append(errs, err)
+		}
 	}
 	return errs
 }
@@ -58,7 +77,7 @@ func (s *Status) validateClass() error {
 	if s.Class == "" {
 		return errors.New("missing class")
 	}
-	if s.Class != "receiver" && s.Class != "processor" && s.Class != "exporter" && s.Class != "connector" && s.Class != "extension" && s.Class != "cmd" {
+	if s.Class != "receiver" && s.Class != "processor" && s.Class != "exporter" && s.Class != "connector" && s.Class != "extension" && s.Class != "cmd" && s.Class != "pkg" {
 		return fmt.Errorf("invalid class: %v", s.Class)
 	}
 	return nil
@@ -125,12 +144,9 @@ func (md *metadata) validateMetrics() error {
 				"only one of the following has to be specified: sum, gauge", mn))
 			continue
 		}
-		// TODO: Remove once https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/23573 is merged.
-		if md.Type != "redis" {
-			if err := m.validate(); err != nil {
-				errs = multierr.Append(errs, fmt.Errorf(`metric "%v": %w`, mn, err))
-				continue
-			}
+		if err := m.validate(); err != nil {
+			errs = multierr.Append(errs, fmt.Errorf(`metric "%v": %w`, mn, err))
+			continue
 		}
 		unknownAttrs := make([]attributeName, 0, len(m.Attributes))
 		for _, attr := range m.Attributes {
@@ -153,7 +169,7 @@ func (m *metric) validate() error {
 	if m.Description == "" {
 		errs = multierr.Append(errs, errors.New(`missing metric description`))
 	}
-	if m.Unit == "" {
+	if m.Unit == nil {
 		errs = multierr.Append(errs, errors.New(`missing metric unit`))
 	}
 	if m.Sum != nil {

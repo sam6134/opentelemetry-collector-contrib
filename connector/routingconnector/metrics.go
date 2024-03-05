@@ -5,12 +5,12 @@ package routingconnector // import "github.com/open-telemetry/opentelemetry-coll
 
 import (
 	"context"
+	"errors"
 
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/connector"
 	"go.opentelemetry.io/collector/consumer"
 	"go.opentelemetry.io/collector/pdata/pmetric"
-	"go.uber.org/multierr"
 	"go.uber.org/zap"
 
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/ottl"
@@ -33,7 +33,7 @@ func newMetricsConnector(
 ) (*metricsConnector, error) {
 	cfg := config.(*Config)
 
-	mr, ok := metrics.(connector.MetricsRouter)
+	mr, ok := metrics.(connector.MetricsRouterAndConsumer)
 	if !ok {
 		return nil, errUnexpectedConsumer
 	}
@@ -72,7 +72,7 @@ func (c *metricsConnector) ConsumeMetrics(ctx context.Context, md pmetric.Metric
 		rtx := ottlresource.NewTransformContext(rmetrics.Resource())
 
 		noRoutesMatch := true
-		for _, route := range c.router.routes {
+		for _, route := range c.router.routeSlice {
 			_, isMatch, err := route.statement.Execute(ctx, rtx)
 			if err != nil {
 				if c.config.ErrorMode == ottl.PropagateError {
@@ -84,6 +84,9 @@ func (c *metricsConnector) ConsumeMetrics(ctx context.Context, md pmetric.Metric
 			if isMatch {
 				noRoutesMatch = false
 				c.group(groups, route.consumer, rmetrics)
+				if c.config.MatchOnce {
+					break
+				}
 			}
 
 		}
@@ -95,7 +98,7 @@ func (c *metricsConnector) ConsumeMetrics(ctx context.Context, md pmetric.Metric
 	}
 
 	for consumer, group := range groups {
-		errs = multierr.Append(errs, consumer.ConsumeMetrics(ctx, group))
+		errs = errors.Join(errs, consumer.ConsumeMetrics(ctx, group))
 	}
 	return errs
 }

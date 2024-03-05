@@ -5,3 +5,9 @@ status:
   stability:
     alpha: [traces]
   distributions: [contrib]
+  codeowners:
+    active: [jpkrohling, hickeyma]
+
+tests:
+  config:
+  expect_consumer_error: true

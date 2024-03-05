@@ -43,7 +43,7 @@ func (gf *graphiteFormatter) escapeGraphiteString(value string) string {
 // format returns metric name basing on template for given fields nas metric name
 func (gf *graphiteFormatter) format(f fields, metricName string) string {
 	s := gf.template
-	labels := make([]interface{}, 0, len(s.matches))
+	labels := make([]any, 0, len(s.matches))
 
 	for _, matchset := range s.matches {
 		if matchset == graphiteMetricNamePlaceholder {
@@ -90,7 +90,7 @@ func (gf *graphiteFormatter) metric2String(record metricPair) string {
 	var nextLines []string
 	fs := newFields(record.attributes)
 	name := record.metric.Name()
-
+	//exhaustive:enforce
 	switch record.metric.Type() {
 	case pmetric.MetricTypeGauge:
 		dps := record.metric.Gauge().DataPoints()

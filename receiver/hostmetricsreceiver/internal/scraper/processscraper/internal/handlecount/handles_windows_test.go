@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
 //go:build windows
-// +build windows
 
 package handlecount
 
@@ -12,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestHandleCountManager(t *testing.T) {
@@ -21,7 +21,7 @@ func TestHandleCountManager(t *testing.T) {
 	}
 	m := deterministicManagerWithInfo(testInfos)
 
-	m.Refresh()
+	require.NoError(t, m.Refresh())
 
 	count, err := m.GetProcessHandleCount(1)
 	assert.NoError(t, err)

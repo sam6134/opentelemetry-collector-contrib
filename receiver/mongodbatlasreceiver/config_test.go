@@ -12,6 +12,7 @@ import (
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/config/configtls"
 	"go.opentelemetry.io/collector/confmap/confmaptest"
+	"go.opentelemetry.io/collector/receiver/scraperhelper"
 
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/mongodbatlasreceiver/internal/metadata"
 )
@@ -25,8 +26,10 @@ func TestValidate(t *testing.T) {
 		expectedErr string
 	}{
 		{
-			name:  "Empty config",
-			input: Config{},
+			name: "Empty config",
+			input: Config{
+				ScraperControllerSettings: scraperhelper.NewDefaultScraperControllerSettings(metadata.Type),
+			},
 		},
 		{
 			name: "Valid alerts config",
@@ -37,6 +40,7 @@ func TestValidate(t *testing.T) {
 					Secret:   "some_secret",
 					Mode:     alertModeListen,
 				},
+				ScraperControllerSettings: scraperhelper.NewDefaultScraperControllerSettings(metadata.Type),
 			},
 		},
 		{
@@ -47,6 +51,7 @@ func TestValidate(t *testing.T) {
 					Secret:  "some_secret",
 					Mode:    alertModeListen,
 				},
+				ScraperControllerSettings: scraperhelper.NewDefaultScraperControllerSettings(metadata.Type),
 			},
 			expectedErr: errNoEndpoint.Error(),
 		},
@@ -58,6 +63,7 @@ func TestValidate(t *testing.T) {
 					Endpoint: "0.0.0.0:7706",
 					Mode:     alertModeListen,
 				},
+				ScraperControllerSettings: scraperhelper.NewDefaultScraperControllerSettings(metadata.Type),
 			},
 			expectedErr: errNoSecret.Error(),
 		},
@@ -70,6 +76,7 @@ func TestValidate(t *testing.T) {
 					Secret:   "some_secret",
 					Mode:     alertModeListen,
 				},
+				ScraperControllerSettings: scraperhelper.NewDefaultScraperControllerSettings(metadata.Type),
 			},
 			expectedErr: "failed to split endpoint into 'host:port' pair",
 		},
@@ -87,6 +94,7 @@ func TestValidate(t *testing.T) {
 						},
 					},
 				},
+				ScraperControllerSettings: scraperhelper.NewDefaultScraperControllerSettings(metadata.Type),
 			},
 			expectedErr: errNoKey.Error(),
 		},
@@ -104,8 +112,50 @@ func TestValidate(t *testing.T) {
 						},
 					},
 				},
+				ScraperControllerSettings: scraperhelper.NewDefaultScraperControllerSettings(metadata.Type),
 			},
 			expectedErr: errNoCert.Error(),
+		},
+		{
+			name: "Valid Metrics Config",
+			input: Config{
+				Projects: []*ProjectConfig{
+					{
+						Name: "Project1",
+					},
+				},
+				ScraperControllerSettings: scraperhelper.NewDefaultScraperControllerSettings(metadata.Type),
+			},
+		},
+		{
+			name: "Valid Metrics Config with multiple projects with an inclusion or exclusion",
+			input: Config{
+				Projects: []*ProjectConfig{
+					{
+						Name:            "Project1",
+						IncludeClusters: []string{"Cluster1"},
+					},
+					{
+						Name:            "Project2",
+						ExcludeClusters: []string{"Cluster1"},
+					},
+				},
+				ScraperControllerSettings: scraperhelper.NewDefaultScraperControllerSettings(metadata.Type),
+			},
+		},
+		{
+			name: "invalid Metrics Config",
+			input: Config{
+				Projects: []*ProjectConfig{
+					{
+						Name:            "Project1",
+						IncludeClusters: []string{"Cluster1"},
+						ExcludeClusters: []string{"Cluster2"},
+					},
+				},
+				ScraperControllerSettings: scraperhelper.NewDefaultScraperControllerSettings(metadata.Type),
+			},
+			expectedErr: errClusterConfig.Error(),
 		},
 		{
 			name: "Valid Logs Config",
@@ -121,6 +171,7 @@ func TestValidate(t *testing.T) {
 						},
 					},
 				},
+				ScraperControllerSettings: scraperhelper.NewDefaultScraperControllerSettings(metadata.Type),
 			},
 		},
 		{
@@ -129,6 +180,7 @@ func TestValidate(t *testing.T) {
 				Logs: LogConfig{
 					Enabled: true,
 				},
+				ScraperControllerSettings: scraperhelper.NewDefaultScraperControllerSettings(metadata.Type),
 			},
 			expectedErr: errNoProjects.Error(),
 		},
@@ -148,6 +200,7 @@ func TestValidate(t *testing.T) {
 						},
 					},
 				},
+				ScraperControllerSettings: scraperhelper.NewDefaultScraperControllerSettings(metadata.Type),
 			},
 			expectedErr: errClusterConfig.Error(),
 		},
@@ -166,6 +219,7 @@ func TestValidate(t *testing.T) {
 					},
 					PageSize: defaultAlertsPageSize,
 				},
+				ScraperControllerSettings: scraperhelper.NewDefaultScraperControllerSettings(metadata.Type),
 			},
 			expectedErr: errClusterConfig.Error(),
 		},
@@ -178,6 +232,7 @@ func TestValidate(t *testing.T) {
 					Projects: []*ProjectConfig{},
 					PageSize: defaultAlertsPageSize,
 				},
+				ScraperControllerSettings: scraperhelper.NewDefaultScraperControllerSettings(metadata.Type),
 			},
 			expectedErr: errNoProjects.Error(),
 		},
@@ -194,6 +249,7 @@ func TestValidate(t *testing.T) {
 					},
 					PageSize: defaultAlertsPageSize,
 				},
+				ScraperControllerSettings: scraperhelper.NewDefaultScraperControllerSettings(metadata.Type),
 			},
 		},
 		{
@@ -204,6 +260,7 @@ func TestValidate(t *testing.T) {
 					Mode:     "invalid type",
 					Projects: []*ProjectConfig{},
 				},
+				ScraperControllerSettings: scraperhelper.NewDefaultScraperControllerSettings(metadata.Type),
 			},
 			expectedErr: errNoModeRecognized.Error(),
 		},
@@ -220,6 +277,7 @@ func TestValidate(t *testing.T) {
 					},
 					PageSize: -1,
 				},
+				ScraperControllerSettings: scraperhelper.NewDefaultScraperControllerSettings(metadata.Type),
 			},
 			expectedErr: errPageSizeIncorrect.Error(),
 		},
@@ -229,6 +287,7 @@ func TestValidate(t *testing.T) {
 				Events: &EventsConfig{
 					Projects: []*ProjectConfig{},
 				},
+				ScraperControllerSettings: scraperhelper.NewDefaultScraperControllerSettings(metadata.Type),
 			},
 			expectedErr: errNoEvents.Error(),
 		},
@@ -249,6 +308,7 @@ func TestValidate(t *testing.T) {
 						},
 					},
 				},
+				ScraperControllerSettings: scraperhelper.NewDefaultScraperControllerSettings(metadata.Type),
 			},
 		},
 		{
@@ -270,6 +330,7 @@ func TestValidate(t *testing.T) {
 						},
 					},
 				},
+				ScraperControllerSettings: scraperhelper.NewDefaultScraperControllerSettings(metadata.Type),
 			},
 			expectedErr: errClusterConfig.Error(),
 		},

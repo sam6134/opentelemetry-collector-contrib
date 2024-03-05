@@ -7,8 +7,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/antonmedv/expr"
-	"github.com/antonmedv/expr/vm"
+	"github.com/expr-lang/expr/vm"
 	"go.uber.org/zap"
 
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/stanza/entry"
@@ -53,7 +52,7 @@ func (c TransformerConfig) Build(logger *zap.SugaredLogger) (TransformerOperator
 	}
 
 	if c.IfExpr != "" {
-		compiled, err := expr.Compile(c.IfExpr, expr.AsBool(), expr.AllowUndefinedVariables())
+		compiled, err := ExprCompileBool(c.IfExpr)
 		if err != nil {
 			return TransformerOperator{}, fmt.Errorf("failed to compile expression '%s': %w", c.IfExpr, err)
 		}
@@ -96,7 +95,7 @@ func (t *TransformerOperator) ProcessWith(ctx context.Context, entry *entry.Entr
 
 // HandleEntryError will handle an entry error using the on_error strategy.
 func (t *TransformerOperator) HandleEntryError(ctx context.Context, entry *entry.Entry, err error) error {
-	t.Errorw("Failed to process entry", zap.Any("error", err), zap.Any("action", t.OnError), zap.Any("entry", entry))
+	t.Errorw("Failed to process entry", zap.Any("error", err), zap.Any("action", t.OnError))
 	if t.OnError == SendOnError {
 		t.Write(ctx, entry)
 	}

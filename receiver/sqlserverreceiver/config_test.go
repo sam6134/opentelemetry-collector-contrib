@@ -7,10 +7,13 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/confmap/confmaptest"
+	"go.opentelemetry.io/collector/receiver/scraperhelper"
 
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/sqlserverreceiver/internal/metadata"
 )
@@ -23,11 +26,14 @@ func TestValidate(t *testing.T) {
 		{
 			desc: "valid config",
 			cfg: &Config{
-				MetricsBuilderConfig: metadata.DefaultMetricsBuilderConfig(),
+				MetricsBuilderConfig:      metadata.DefaultMetricsBuilderConfig(),
+				ScraperControllerSettings: scraperhelper.NewDefaultScraperControllerSettings(metadata.Type),
 			},
 		}, {
 			desc: "valid config with no metric settings",
-			cfg:  &Config{},
+			cfg: &Config{
+				ScraperControllerSettings: scraperhelper.NewDefaultScraperControllerSettings(metadata.Type),
+			},
 		},
 		{
 			desc: "default config is valid",
@@ -87,6 +93,8 @@ func TestLoadConfig(t *testing.T) {
 		require.NoError(t, component.UnmarshalConfig(sub, cfg))
 
 		assert.NoError(t, component.ValidateConfig(cfg))
-		assert.Equal(t, expected, cfg)
+		if diff := cmp.Diff(expected, cfg, cmpopts.IgnoreUnexported(metadata.MetricConfig{}), cmpopts.IgnoreUnexported(metadata.ResourceAttributeConfig{})); diff != "" {
+			t.Errorf("Config mismatch (-expected +actual):\n%s", diff)
+		}
 	})
 }

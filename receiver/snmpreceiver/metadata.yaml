@@ -5,3 +5,15 @@ status:
   stability:
     alpha: [metrics]
   distributions: [contrib, sumo]
+  codeowners:
+    active: [djaglowski, StefanKurek, tamir-michaeli]
+
+tests:
+  config:
+    metrics:
+      m1:
+        unit: "1"
+        gauge:
+          value_type: int
+        scalar_oids:
+          - oid: ".1"

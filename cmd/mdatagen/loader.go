@@ -94,26 +94,6 @@ func (mvt ValueType) Primitive() string {
 	}
 }
 
-func (mvt ValueType) TestValue() string {
-	switch mvt.ValueType {
-	case pcommon.ValueTypeEmpty, pcommon.ValueTypeStr:
-		return `"attr-val"`
-	case pcommon.ValueTypeInt:
-		return "1"
-	case pcommon.ValueTypeDouble:
-		return "1.1"
-	case pcommon.ValueTypeBool:
-		return "true"
-	case pcommon.ValueTypeMap:
-		return `map[string]any{"onek": "onev", "twok": "twov"}`
-	case pcommon.ValueTypeSlice:
-		return `[]any{"one", "two"}`
-	case pcommon.ValueTypeBytes:
-		return ""
-	}
-	return ""
-}
-
 type metric struct {
 	// Enabled defines whether the metric is enabled by default.
 	Enabled bool `mapstructure:"enabled"`
@@ -129,7 +109,7 @@ type metric struct {
 	ExtendedDocumentation string `mapstructure:"extended_documentation"`
 
 	// Unit of the metric.
-	Unit string `mapstructure:"unit"`
+	Unit *string `mapstructure:"unit"`
 
 	// Sum stores metadata for sum metric type
 	Sum *sum `mapstructure:"sum,omitempty"`
@@ -144,7 +124,7 @@ func (m *metric) Unmarshal(parser *confmap.Conf) error {
 	if !parser.IsSet("enabled") {
 		return errors.New("missing required field: `enabled`")
 	}
-	err := parser.Unmarshal(m, confmap.WithErrorUnused())
+	err := parser.Unmarshal(m)
 	if err != nil {
 		return err
 	}
@@ -161,11 +141,11 @@ func (m metric) Data() MetricData {
 }
 
 type warnings struct {
-	// A warning that will be displayed if the metric is enabled in user config.
+	// A warning that will be displayed if the field is enabled in user config.
 	IfEnabled string `mapstructure:"if_enabled"`
 	// A warning that will be displayed if `enabled` field is not set explicitly in user config.
 	IfEnabledNotSet string `mapstructure:"if_enabled_not_set"`
-	// A warning that will be displayed if the metrics is configured by user in any way.
+	// A warning that will be displayed if the field is configured by user in any way.
 	IfConfigured string `mapstructure:"if_configured"`
 }
 
@@ -180,6 +160,49 @@ type attribute struct {
 	Enum []string `mapstructure:"enum"`
 	// Type is an attribute type.
 	Type ValueType `mapstructure:"type"`
+	// FullName is the attribute name populated from the map key.
+	FullName attributeName `mapstructure:"-"`
+	// Warnings that will be shown to user under specified conditions.
+	Warnings warnings `mapstructure:"warnings"`
+}
+
+// Name returns actual name of the attribute that is set on the metric after applying NameOverride.
+func (a attribute) Name() attributeName {
+	if a.NameOverride != "" {
+		return attributeName(a.NameOverride)
+	}
+	return a.FullName
+}
+
+func (a attribute) TestValue() string {
+	if a.Enum != nil {
+		return fmt.Sprintf(`"%s"`, a.Enum[0])
+	}
+	switch a.Type.ValueType {
+	case pcommon.ValueTypeEmpty:
+		return ""
+	case pcommon.ValueTypeStr:
+		return fmt.Sprintf(`"%s-val"`, a.FullName)
+	case pcommon.ValueTypeInt:
+		return fmt.Sprintf("%d", len(a.FullName))
+	case pcommon.ValueTypeDouble:
+		return fmt.Sprintf("%f", 0.1+float64(len(a.FullName)))
+	case pcommon.ValueTypeBool:
+		return fmt.Sprintf("%t", len(a.FullName)%2 == 0)
+	case pcommon.ValueTypeMap:
+		return fmt.Sprintf(`map[string]any{"key1": "%s-val1", "key2": "%s-val2"}`, a.FullName, a.FullName)
+	case pcommon.ValueTypeSlice:
+		return fmt.Sprintf(`[]any{"%s-item1", "%s-item2"}`, a.FullName, a.FullName)
+	case pcommon.ValueTypeBytes:
+		return fmt.Sprintf(`[]byte("%s-val")`, a.FullName)
+	}
+	return ""
+}
+
+type tests struct {
+	Config              any  `mapstructure:"config"`
+	SkipLifecycle       bool `mapstructure:"skip_lifecycle"`
+	ExpectConsumerError bool `mapstructure:"expect_consumer_error"`
 }
 
 type metadata struct {
@@ -201,6 +224,15 @@ type metadata struct {
 	ScopeName string `mapstructure:"-"`
 	// ShortFolderName is the shortened folder name of the component, removing class if present
 	ShortFolderName string `mapstructure:"-"`
+
+	Tests *tests `mapstructure:"tests"`
+}
+
+func setAttributesFullName(attrs map[attributeName]attribute) {
+	for k, v := range attrs {
+		v.FullName = k
+		attrs[k] = v
+	}
 }
 
 type templateContext struct {
@@ -221,7 +253,7 @@ func loadMetadata(filePath string) (metadata, error) {
 	}
 
 	md := metadata{ScopeName: scopeName(filePath), ShortFolderName: shortFolderName(filePath)}
-	if err := conf.Unmarshal(&md, confmap.WithErrorUnused()); err != nil {
+	if err := conf.Unmarshal(&md); err != nil {
 		return md, err
 	}
 
@@ -229,25 +261,27 @@ func loadMetadata(filePath string) (metadata, error) {
 		return md, err
 	}
 
+	setAttributesFullName(md.Attributes)
+	setAttributesFullName(md.ResourceAttributes)
+
 	return md, nil
+}
+
+var componentTypes = map[string]func(string) string{
+	"connector": func(in string) string { return strings.TrimSuffix(in, "connector") },
+	"exporter":  func(in string) string { return strings.TrimSuffix(in, "exporter") },
+	"extension": func(in string) string { return strings.TrimSuffix(in, "extension") },
+	"processor": func(in string) string { return strings.TrimSuffix(in, "processor") },
+	"scraper":   func(in string) string { return strings.TrimSuffix(in, "scraper") },
+	"receiver":  func(in string) string { return in },
 }
 
 func shortFolderName(filePath string) string {
 	parentFolder := filepath.Base(filepath.Dir(filePath))
-	if strings.HasSuffix(parentFolder, "connector") {
-		return strings.TrimSuffix(parentFolder, "connector")
-	}
-	if strings.HasSuffix(parentFolder, "exporter") {
-		return strings.TrimSuffix(parentFolder, "exporter")
-	}
-	if strings.HasSuffix(parentFolder, "extension") {
-		return strings.TrimSuffix(parentFolder, "extension")
-	}
-	if strings.HasSuffix(parentFolder, "processor") {
-		return strings.TrimSuffix(parentFolder, "processor")
-	}
-	if strings.HasSuffix(parentFolder, "receiver") {
-		return strings.TrimSuffix(parentFolder, "receiver")
+	for cType := range componentTypes {
+		if strings.HasSuffix(parentFolder, cType) {
+			return strings.TrimSuffix(parentFolder, cType)
+		}
 	}
 	return parentFolder
 }
@@ -256,11 +290,18 @@ func scopeName(filePath string) string {
 	sn := "otelcol"
 	dirs := strings.Split(filepath.Dir(filePath), string(os.PathSeparator))
 	for _, dir := range dirs {
-		if dir != "receiver" && strings.HasSuffix(dir, "receiver") {
-			sn += "/" + dir
+		// skip directory names for component types
+		if _, ok := componentTypes[dir]; ok {
+			continue
 		}
-		if dir != "scraper" && strings.HasSuffix(dir, "scraper") {
-			sn += "/" + strings.TrimSuffix(dir, "scraper")
+		// note here that the only component that receives a different
+		// treatment is receivers. this is to prevent breaking backwards
+		// compatibility for anyone that's using the generated metrics w/
+		// scope names today.
+		for cType, normalizeFunc := range componentTypes {
+			if strings.HasSuffix(dir, cType) {
+				sn += "/" + normalizeFunc(dir)
+			}
 		}
 	}
 	return sn

@@ -5,4 +5,9 @@ status:
   stability:
     alpha: [logs]
   distributions: [contrib, splunk, observiq, sumo]
+  codeowners:
+    active: [djaglowski]
 
+tests:
+  config:
+    listen_address: "localhost:0"

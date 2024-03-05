@@ -36,11 +36,11 @@ func TestLoadConfig(t *testing.T) {
 				ScraperControllerSettings: scraperhelper.ScraperControllerSettings{
 					CollectionInterval: 2 * time.Second,
 					InitialDelay:       time.Second,
+					Timeout:            20 * time.Second,
 				},
 
 				Endpoint:         "http://example.com/",
-				Timeout:          20 * time.Second,
-				DockerAPIVersion: 1.24,
+				DockerAPIVersion: "1.40",
 
 				ExcludedImages: []string{
 					"undesired-container",
@@ -83,7 +83,7 @@ func TestLoadConfig(t *testing.T) {
 			require.NoError(t, component.UnmarshalConfig(sub, cfg))
 
 			assert.NoError(t, component.ValidateConfig(cfg))
-			if diff := cmp.Diff(tt.expected, cfg, cmpopts.IgnoreUnexported(metadata.MetricConfig{})); diff != "" {
+			if diff := cmp.Diff(tt.expected, cfg, cmpopts.IgnoreUnexported(metadata.MetricConfig{}), cmpopts.IgnoreUnexported(metadata.ResourceAttributeConfig{})); diff != "" {
 				t.Errorf("Config mismatch (-expected +actual):\n%s", diff)
 			}
 		})
@@ -91,12 +91,20 @@ func TestLoadConfig(t *testing.T) {
 }
 
 func TestValidateErrors(t *testing.T) {
-	cfg := &Config{}
+	cfg := &Config{ScraperControllerSettings: scraperhelper.NewDefaultScraperControllerSettings(metadata.Type)}
 	assert.Equal(t, "endpoint must be specified", component.ValidateConfig(cfg).Error())
 
-	cfg = &Config{Endpoint: "someEndpoint"}
-	assert.Equal(t, "collection_interval must be a positive duration", component.ValidateConfig(cfg).Error())
+	cfg = &Config{
+		DockerAPIVersion:          "1.21",
+		Endpoint:                  "someEndpoint",
+		ScraperControllerSettings: scraperhelper.ScraperControllerSettings{CollectionInterval: 1 * time.Second},
+	}
+	assert.Equal(t, `"api_version" 1.21 must be at least 1.25`, component.ValidateConfig(cfg).Error())
 
-	cfg = &Config{ScraperControllerSettings: scraperhelper.ScraperControllerSettings{CollectionInterval: 1 * time.Second}, Endpoint: "someEndpoint", DockerAPIVersion: 1.21}
-	assert.Equal(t, "api_version must be at least 1.22", component.ValidateConfig(cfg).Error())
+	cfg = &Config{
+		Endpoint:                  "someEndpoint",
+		DockerAPIVersion:          "1.25",
+		ScraperControllerSettings: scraperhelper.ScraperControllerSettings{},
+	}
+	assert.Equal(t, `"collection_interval": requires positive value`, component.ValidateConfig(cfg).Error())
 }

@@ -52,10 +52,11 @@ type client struct {
 	buildInfo         component.BuildInfo
 	heartbeater       *heartbeater
 	bufferPool        bufferPool
+	exporterName      string
 }
 
 var jsonStreamPool = sync.Pool{
-	New: func() interface{} {
+	New: func() any {
 		return jsoniter.NewStream(jsoniter.ConfigDefault, nil, 512)
 	},
 }
@@ -67,6 +68,7 @@ func newClient(set exporter.CreateSettings, cfg *Config, maxContentLength uint) 
 		telemetrySettings: set.TelemetrySettings,
 		buildInfo:         set.BuildInfo,
 		bufferPool:        newBufferPool(maxContentLength, !cfg.DisableCompression),
+		exporterName:      set.ID.String(),
 	}
 }
 
@@ -246,6 +248,7 @@ func (c *client) fillMetricsBuffer(metrics pmetric.Metrics, buf buffer, is iterS
 	jsonStream := jsonStreamPool.Get().(*jsoniter.Stream)
 	defer jsonStreamPool.Put(jsonStream)
 
+	tempBuf := bytes.NewBuffer(make([]byte, 0, c.config.MaxContentLengthMetrics))
 	for i := is.resource; i < metrics.ResourceMetrics().Len(); i++ {
 		rm := metrics.ResourceMetrics().At(i)
 		for j := is.library; j < rm.ScopeMetrics().Len(); j++ {
@@ -257,7 +260,7 @@ func (c *client) fillMetricsBuffer(metrics pmetric.Metrics, buf buffer, is iterS
 
 				// Parsing metric record to Splunk event.
 				events := mapMetricToSplunkEvent(rm.Resource(), metric, c.config, c.logger)
-				tempBuf := bytes.NewBuffer(make([]byte, 0, c.config.MaxContentLengthMetrics))
+				tempBuf.Reset()
 				for _, event := range events {
 					// JSON encoding event and writing to buffer.
 					b, err := marshalEvent(event, c.config.MaxEventSize, jsonStream)
@@ -613,7 +616,7 @@ func (c *client) stop(context.Context) error {
 	return nil
 }
 
-func (c *client) start(_ context.Context, host component.Host) (err error) {
+func (c *client) start(ctx context.Context, host component.Host) (err error) {
 
 	httpClient, err := buildHTTPClient(c.config, host, c.telemetrySettings)
 	if err != nil {
@@ -623,19 +626,24 @@ func (c *client) start(_ context.Context, host component.Host) (err error) {
 	if c.config.HecHealthCheckEnabled {
 		healthCheckURL, _ := c.config.getURL()
 		healthCheckURL.Path = c.config.HealthPath
-		if err := checkHecHealth(httpClient, healthCheckURL); err != nil {
-			return fmt.Errorf("health check failed: %w", err)
+		if err := checkHecHealth(ctx, httpClient, healthCheckURL); err != nil {
+			return fmt.Errorf("%s: health check failed: %w", c.exporterName, err)
 		}
 	}
 	url, _ := c.config.getURL()
 	c.hecWorker = &defaultHecWorker{url, httpClient, buildHTTPHeaders(c.config, c.buildInfo)}
 	c.heartbeater = newHeartbeater(c.config, c.buildInfo, getPushLogFn(c))
+	if c.config.Heartbeat.Startup {
+		if err := c.heartbeater.sendHeartbeat(c.config, c.buildInfo, getPushLogFn(c)); err != nil {
+			return fmt.Errorf("%s: heartbeat on startup failed: %w", c.exporterName, err)
+		}
+	}
 	return nil
 }
 
-func checkHecHealth(client *http.Client, healthCheckURL *url.URL) error {
+func checkHecHealth(ctx context.Context, client *http.Client, healthCheckURL *url.URL) error {
 
-	req, err := http.NewRequest("GET", healthCheckURL.String(), nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, healthCheckURL.String(), nil)
 	if err != nil {
 		return consumererror.NewPermanent(err)
 	}
@@ -656,17 +664,7 @@ func checkHecHealth(client *http.Client, healthCheckURL *url.URL) error {
 
 func buildHTTPClient(config *Config, host component.Host, telemetrySettings component.TelemetrySettings) (*http.Client, error) {
 	// we handle compression explicitly.
-	config.HTTPClientSettings.Compression = ""
-	if config.MaxConnections != 0 && (config.MaxIdleConns == nil || config.HTTPClientSettings.MaxIdleConnsPerHost == nil) {
-		telemetrySettings.Logger.Warn("You are using the deprecated `max_connections` option that will be removed soon; use `max_idle_conns` and/or `max_idle_conns_per_host` instead: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/exporter/splunkhecexporter#advanced-configuration")
-		intMaxConns := int(config.MaxConnections)
-		if config.HTTPClientSettings.MaxIdleConns == nil {
-			config.HTTPClientSettings.MaxIdleConns = &intMaxConns
-		}
-		if config.HTTPClientSettings.MaxIdleConnsPerHost == nil {
-			config.HTTPClientSettings.MaxIdleConnsPerHost = &intMaxConns
-		}
-	}
+	config.ClientConfig.Compression = ""
 	return config.ToClient(host, telemetrySettings)
 }
 

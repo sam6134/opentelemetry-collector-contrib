@@ -5,3 +5,10 @@ status:
   stability:
     deprecated: [traces]
   distributions: [contrib, observiq, splunk, sumo]
+  codeowners:
+    active: []
+    emeritus: [albertteoh]
+
+tests:
+  config:
+  skip_lifecycle: true

@@ -15,6 +15,7 @@ import (
 	"go.opentelemetry.io/collector/config/configopaque"
 	"go.opentelemetry.io/collector/config/configtls"
 	"go.opentelemetry.io/collector/confmap/confmaptest"
+	"go.opentelemetry.io/collector/receiver/scraperhelper"
 
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/mongodbreceiver/internal/metadata"
 )
@@ -75,22 +76,23 @@ func TestValidate(t *testing.T) {
 	}
 	for _, tc := range testCases {
 		t.Run(tc.desc, func(t *testing.T) {
-			var hosts []confignet.NetAddr
+			var hosts []confignet.AddrConfig
 
 			for _, ep := range tc.endpoints {
-				hosts = append(hosts, confignet.NetAddr{
+				hosts = append(hosts, confignet.AddrConfig{
 					Endpoint: ep,
 				})
 			}
 
 			cfg := &Config{
-				Username: tc.username,
-				Password: configopaque.String(tc.password),
-				Hosts:    hosts,
+				Username:                  tc.username,
+				Password:                  configopaque.String(tc.password),
+				Hosts:                     hosts,
+				ScraperControllerSettings: scraperhelper.NewDefaultScraperControllerSettings(metadata.Type),
 			}
 			err := component.ValidateConfig(cfg)
 			if tc.expected == nil {
-				require.Nil(t, err)
+				require.NoError(t, err)
 			} else {
 				require.Contains(t, err.Error(), tc.expected.Error())
 			}
@@ -132,12 +134,13 @@ func TestBadTLSConfigs(t *testing.T) {
 			cfg := &Config{
 				Username: "otel",
 				Password: "pword",
-				Hosts: []confignet.NetAddr{
+				Hosts: []confignet.AddrConfig{
 					{
 						Endpoint: "localhost:27017",
 					},
 				},
-				TLSClientSetting: tc.tlsConfig,
+				ScraperControllerSettings: scraperhelper.NewDefaultScraperControllerSettings(metadata.Type),
+				TLSClientSetting:          tc.tlsConfig,
 			}
 			err := component.ValidateConfig(cfg)
 			if tc.expectError {
@@ -151,7 +154,7 @@ func TestBadTLSConfigs(t *testing.T) {
 
 func TestOptions(t *testing.T) {
 	cfg := &Config{
-		Hosts: []confignet.NetAddr{
+		Hosts: []confignet.AddrConfig{
 			{
 				Endpoint: "localhost:27017",
 			},
@@ -176,7 +179,7 @@ func TestOptionsTLS(t *testing.T) {
 	caFile := filepath.Join("testdata", "certs", "ca.crt")
 
 	cfg := &Config{
-		Hosts: []confignet.NetAddr{
+		Hosts: []confignet.AddrConfig{
 			{
 				Endpoint: "localhost:27017",
 			},
@@ -204,7 +207,7 @@ func TestLoadConfig(t *testing.T) {
 	require.NoError(t, component.UnmarshalConfig(sub, cfg))
 
 	expected := factory.CreateDefaultConfig().(*Config)
-	expected.Hosts = []confignet.NetAddr{
+	expected.Hosts = []confignet.AddrConfig{
 		{
 			Endpoint: "localhost:27017",
 		},

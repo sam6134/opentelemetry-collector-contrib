@@ -15,7 +15,7 @@ import (
 	"go.opentelemetry.io/collector/component/componenttest"
 	"go.opentelemetry.io/collector/receiver/receivertest"
 
-	"github.com/open-telemetry/opentelemetry-collector-contrib/internal/coreinternal/golden"
+	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/golden"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatatest/pmetrictest"
 )
 
@@ -36,7 +36,7 @@ func TestScraper(t *testing.T) {
 	}
 	defer db.Close()
 
-	mockDB := MockDB{mock}
+	mockDB := mockDB{mock}
 	mockDB.initMockDB()
 
 	scraper := newSnowflakeMetricsScraper(receivertest.NewNopCreateSettings(), cfg)
@@ -75,11 +75,11 @@ func TestStart(t *testing.T) {
 }
 
 // wrapper type for convenience
-type MockDB struct {
+type mockDB struct {
 	mock sqlmock.Sqlmock
 }
 
-func (m *MockDB) initMockDB() {
+func (m *mockDB) initMockDB() {
 	testDB := []struct {
 		query   string
 		columns []string

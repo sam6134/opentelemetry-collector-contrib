@@ -6,3 +6,7 @@ status:
     beta: [traces, metrics, logs]
   distributions: [contrib, splunk, observiq, sumo]
   warnings: []
+  codeowners:
+    active: [rnishtala-sumo]
+tests:
+  config:

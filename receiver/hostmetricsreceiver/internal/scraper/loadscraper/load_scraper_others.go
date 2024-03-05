@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
 //go:build !windows
-// +build !windows
 
 package loadscraper // import "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/hostmetricsreceiver/internal/scraper/loadscraper"
 
@@ -22,6 +21,6 @@ func stopSampling(_ context.Context) error {
 	return nil
 }
 
-func getSampledLoadAverages() (*load.AvgStat, error) {
-	return load.Avg()
+func getSampledLoadAverages(ctx context.Context) (*load.AvgStat, error) {
+	return load.AvgWithContext(ctx)
 }

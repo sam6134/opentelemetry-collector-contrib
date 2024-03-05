@@ -27,7 +27,7 @@ func TestTransformer(t *testing.T) {
 	t1 := time.Date(2020, time.April, 11, 21, 34, 01, 0, time.UTC)
 	t2 := time.Date(2020, time.April, 11, 21, 34, 02, 0, time.UTC)
 
-	entryWithBody := func(ts time.Time, body interface{}) *entry.Entry {
+	entryWithBody := func(ts time.Time, body any) *entry.Entry {
 		e := entry.New()
 		e.ObservedTimestamp = now
 		e.Timestamp = ts
@@ -35,7 +35,7 @@ func TestTransformer(t *testing.T) {
 		return e
 	}
 
-	entryWithBodyAttr := func(ts time.Time, body interface{}, Attr map[string]string) *entry.Entry {
+	entryWithBodyAttr := func(ts time.Time, body any, Attr map[string]string) *entry.Entry {
 		e := entryWithBody(ts, body)
 		for k, v := range Attr {
 			e.AddAttribute(k, v)
@@ -128,6 +128,25 @@ func TestTransformer(t *testing.T) {
 				entryWithBody(t2, "test1"),
 			},
 			[]*entry.Entry{
+				entryWithBody(t1, "test1\ntest2"),
+			},
+		},
+		{
+			"ThreeEntriesFirstOldest",
+			func() *Config {
+				cfg := NewConfig()
+				cfg.CombineField = entry.NewBodyField()
+				cfg.IsFirstEntry = "body == 'test1'"
+				cfg.OutputIDs = []string{"fake"}
+				cfg.OverwriteWith = "oldest"
+				return cfg
+			}(),
+			[]*entry.Entry{
+				entryWithBody(t1, "test1"),
+				entryWithBody(t2, "test2"),
+				entryWithBody(t2, "test1"),
+			},
+			[]*entry.Entry{
 				entryWithBody(t2, "test1\ntest2"),
 			},
 		},
@@ -139,6 +158,7 @@ func TestTransformer(t *testing.T) {
 				cfg.IsFirstEntry = "$body == 'test1'"
 				cfg.OutputIDs = []string{"fake"}
 				cfg.OverwriteWith = "newest"
+				cfg.ForceFlushTimeout = 10 * time.Millisecond
 				return cfg
 			}(),
 			[]*entry.Entry{
@@ -147,9 +167,7 @@ func TestTransformer(t *testing.T) {
 				entryWithBody(t2, "test4"),
 			},
 			[]*entry.Entry{
-				entryWithBody(t1, "test2"),
-				entryWithBody(t2, "test3"),
-				entryWithBody(t2, "test4"),
+				entryWithBody(t1, "test2\ntest3\ntest4"),
 			},
 		},
 		{
@@ -157,25 +175,26 @@ func TestTransformer(t *testing.T) {
 			func() *Config {
 				cfg := NewConfig()
 				cfg.CombineField = entry.NewBodyField()
-				cfg.IsFirstEntry = "body == 'file1'"
+				cfg.IsFirstEntry = "body == 'start'"
 				cfg.OutputIDs = []string{"fake"}
-				cfg.OverwriteWith = "newest"
+				cfg.OverwriteWith = "oldest"
+				cfg.ForceFlushTimeout = 10 * time.Millisecond
 				return cfg
 			}(),
 			[]*entry.Entry{
-				entryWithBodyAttr(t1, "file1", map[string]string{"file.path": "file1"}),
-				entryWithBodyAttr(t1, "file3", map[string]string{"file.path": "file1"}),
-				entryWithBodyAttr(t1, "file1", map[string]string{"file.path": "file1"}),
-				entryWithBodyAttr(t2, "file2", map[string]string{"file.path": "file1"}),
-				entryWithBodyAttr(t1, "file1", map[string]string{"file.path": "file1"}),
-				entryWithBodyAttr(t2, "file2", map[string]string{"file.path": "file2"}),
-				entryWithBodyAttr(t2, "file3", map[string]string{"file.path": "file2"}),
+				entryWithBodyAttr(t1, "start", map[string]string{"file.path": "file1"}),
+				entryWithBodyAttr(t1, "more1a", map[string]string{"file.path": "file1"}),
+				entryWithBodyAttr(t1, "start", map[string]string{"file.path": "file1"}),
+				entryWithBodyAttr(t2, "more1b", map[string]string{"file.path": "file1"}),
+				entryWithBodyAttr(t2, "start", map[string]string{"file.path": "file1"}),
+				entryWithBodyAttr(t2, "more2a", map[string]string{"file.path": "file2"}),
+				entryWithBodyAttr(t2, "more2b", map[string]string{"file.path": "file2"}),
 			},
 			[]*entry.Entry{
-				entryWithBodyAttr(t1, "file1\nfile3", map[string]string{"file.path": "file1"}),
-				entryWithBodyAttr(t2, "file1\nfile2", map[string]string{"file.path": "file1"}),
-				entryWithBodyAttr(t2, "file2", map[string]string{"file.path": "file2"}),
-				entryWithBodyAttr(t2, "file3", map[string]string{"file.path": "file2"}),
+				entryWithBodyAttr(t1, "start\nmore1a", map[string]string{"file.path": "file1"}),
+				entryWithBodyAttr(t2, "start\nmore1b", map[string]string{"file.path": "file1"}),
+				entryWithBodyAttr(t2, "start", map[string]string{"file.path": "file1"}),
+				entryWithBodyAttr(t2, "more2a\nmore2b", map[string]string{"file.path": "file2"}),
 			},
 		},
 		{
@@ -193,6 +212,124 @@ func TestTransformer(t *testing.T) {
 				entryWithBody(t1, "test2"),
 			},
 			[]*entry.Entry{entryWithBody(t1, "test1test2")},
+		},
+		{
+			"Stacktrace",
+			func() *Config {
+				cfg := NewConfig()
+				cfg.CombineField = entry.NewBodyField()
+				cfg.IsFirstEntry = `body matches "^[^\\s]"`
+				cfg.OutputIDs = []string{"fake"}
+				cfg.ForceFlushTimeout = 10 * time.Millisecond
+				return cfg
+			}(),
+			[]*entry.Entry{
+				entryWithBody(t1, "Log message 1"),
+				entryWithBody(t1, "Error: java.lang.Exception: Stack trace"),
+				entryWithBody(t1, "        at java.lang.Thread.dumpStack(Thread.java:1336)"),
+				entryWithBody(t1, "        at Main.demo3(Main.java:15)"),
+				entryWithBody(t1, "        at Main.demo2(Main.java:12)"),
+				entryWithBody(t1, "        at Main.demo1(Main.java:9)"),
+				entryWithBody(t1, "        at Main.demo(Main.java:6)"),
+				entryWithBody(t1, "        at Main.main(Main.java:3)"),
+				entryWithBody(t1, "Another log message"),
+			},
+			[]*entry.Entry{
+				entryWithBody(t1, "Log message 1"),
+				entryWithBody(t1, "Error: java.lang.Exception: Stack trace\n"+
+					"        at java.lang.Thread.dumpStack(Thread.java:1336)\n"+
+					"        at Main.demo3(Main.java:15)\n"+
+					"        at Main.demo2(Main.java:12)\n"+
+					"        at Main.demo1(Main.java:9)\n"+
+					"        at Main.demo(Main.java:6)\n"+
+					"        at Main.main(Main.java:3)"),
+				entryWithBody(t1, "Another log message"),
+			},
+		},
+		{
+			"StacktraceSubfield",
+			func() *Config {
+				cfg := NewConfig()
+				cfg.CombineField = entry.NewBodyField("message")
+				cfg.IsFirstEntry = `body.message matches "^[^\\s]"`
+				cfg.OutputIDs = []string{"fake"}
+				cfg.ForceFlushTimeout = 10 * time.Millisecond
+				return cfg
+			}(),
+			[]*entry.Entry{
+				entryWithBody(t1, map[string]any{"message": "Log message 1"}),
+				entryWithBody(t1, map[string]any{"message": "Error: java.lang.Exception: Stack trace"}),
+				entryWithBody(t1, map[string]any{"message": "        at java.lang.Thread.dumpStack(Thread.java:1336)"}),
+				entryWithBody(t1, map[string]any{"message": "        at Main.demo3(Main.java:15)"}),
+				entryWithBody(t1, map[string]any{"message": "        at Main.demo2(Main.java:12)"}),
+				entryWithBody(t1, map[string]any{"message": "        at Main.demo1(Main.java:9)"}),
+				entryWithBody(t1, map[string]any{"message": "        at Main.demo(Main.java:6)"}),
+				entryWithBody(t1, map[string]any{"message": "        at Main.main(Main.java:3)"}),
+				entryWithBody(t1, map[string]any{"message": "Another log message"}),
+			},
+			[]*entry.Entry{
+				entryWithBody(t1, map[string]any{"message": "Log message 1"}),
+				entryWithBody(t1, map[string]any{"message": "Error: java.lang.Exception: Stack trace\n" +
+					"        at java.lang.Thread.dumpStack(Thread.java:1336)\n" +
+					"        at Main.demo3(Main.java:15)\n" +
+					"        at Main.demo2(Main.java:12)\n" +
+					"        at Main.demo1(Main.java:9)\n" +
+					"        at Main.demo(Main.java:6)\n" +
+					"        at Main.main(Main.java:3)"}),
+				entryWithBody(t1, map[string]any{"message": "Another log message"}),
+			},
+		},
+		{
+			"CombineOtherThanCondition",
+			func() *Config {
+				cfg := NewConfig()
+				cfg.CombineField = entry.NewBodyField("message")
+				cfg.CombineWith = ""
+				cfg.IsLastEntry = "body.logtag == 'F'"
+				cfg.OverwriteWith = "oldest"
+				cfg.OutputIDs = []string{"fake"}
+				return cfg
+			}(),
+			[]*entry.Entry{
+				entryWithBody(t1, map[string]any{
+					"message":   "Single entry log 1",
+					"logtag":    "F",
+					"stream":    "stdout",
+					"timestamp": "2016-10-06T00:17:09.669794202Z",
+				}),
+				entryWithBody(t1, map[string]any{
+					"message":   "This is a very very long line th",
+					"logtag":    "P",
+					"stream":    "stdout",
+					"timestamp": "2016-10-06T00:17:10.113242941Z",
+				}),
+				entryWithBody(t1, map[string]any{
+					"message":   "at is really really long and spa",
+					"logtag":    "P",
+					"stream":    "stdout",
+					"timestamp": "2016-10-06T00:17:10.113242941Z",
+				}),
+				entryWithBody(t1, map[string]any{
+					"message":   "ns across multiple log entries",
+					"logtag":    "F",
+					"stream":    "stdout",
+					"timestamp": "2016-10-06T00:17:10.113242941Z",
+				}),
+			},
+			[]*entry.Entry{
+				entryWithBody(t1, map[string]any{
+					"message":   "Single entry log 1",
+					"logtag":    "F",
+					"stream":    "stdout",
+					"timestamp": "2016-10-06T00:17:09.669794202Z",
+				}),
+				entryWithBody(t1, map[string]any{
+					"message":   "This is a very very long line that is really really long and spans across multiple log entries",
+					"logtag":    "F",
+					"stream":    "stdout",
+					"timestamp": "2016-10-06T00:17:10.113242941Z",
+				}),
+			},
 		},
 		{
 			"TestDefaultSourceIdentifier",
@@ -243,15 +380,22 @@ func TestTransformer(t *testing.T) {
 				cfg.IsLastEntry = "body == 'end'"
 				cfg.OutputIDs = []string{"fake"}
 				cfg.MaxSources = 1
+				cfg.OverwriteWith = "oldest"
+				cfg.ForceFlushTimeout = 10 * time.Millisecond
 				return cfg
 			}(),
 			[]*entry.Entry{
-				entryWithBodyAttr(t1, "file1", map[string]string{"file.path": "file1"}),
-				entryWithBodyAttr(t2, "end", map[string]string{"file.path": "file1"}),
+				entryWithBodyAttr(t1, "start1", map[string]string{"file.path": "file1"}),
+				entryWithBodyAttr(t1.Add(10*time.Millisecond), "middle1", map[string]string{"file.path": "file1"}),
+				entryWithBodyAttr(t2, "start2", map[string]string{"file.path": "file2"}),
+				entryWithBodyAttr(t2.Add(10*time.Millisecond), "middle2", map[string]string{"file.path": "file2"}),
+				entryWithBodyAttr(t2.Add(20*time.Millisecond), "end2", map[string]string{"file.path": "file2"}),
 			},
 			[]*entry.Entry{
-				entryWithBodyAttr(t1, "file1", map[string]string{"file.path": "file1"}),
-				entryWithBodyAttr(t2, "end", map[string]string{"file.path": "file1"}),
+				// First entry is booted before end comes in, but partial recombination should occur
+				entryWithBodyAttr(t1.Add(10*time.Millisecond), "start1\nmiddle1", map[string]string{"file.path": "file1"}),
+				// Second entry is flushed automatically when end comes in
+				entryWithBodyAttr(t2.Add(20*time.Millisecond), "start2\nmiddle2\nend2", map[string]string{"file.path": "file2"}),
 			},
 		},
 		{
@@ -356,21 +500,22 @@ func TestTransformer(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
+			ctx := context.Background()
 			op, err := tc.config.Build(testutil.Logger(t))
 			require.NoError(t, err)
-			recombine := op.(*Transformer)
+			require.NoError(t, op.Start(testutil.NewUnscopedMockPersister()))
+			defer func() { require.NoError(t, op.Stop()) }()
+			r := op.(*Transformer)
 
 			fake := testutil.NewFakeOutput(t)
-			err = recombine.SetOutputs([]operator.Operator{fake})
+			err = r.SetOutputs([]operator.Operator{fake})
 			require.NoError(t, err)
 
 			for _, e := range tc.input {
-				require.NoError(t, recombine.Process(context.Background(), e))
+				require.NoError(t, r.Process(ctx, e))
 			}
 
-			for _, expected := range tc.expectedOutput {
-				fake.ExpectEntry(t, expected)
-			}
+			fake.ExpectEntries(t, tc.expectedOutput)
 
 			select {
 			case e := <-fake.Received:
@@ -454,7 +599,7 @@ func BenchmarkRecombine(b *testing.B) {
 		for _, e := range entries {
 			require.NoError(b, recombine.Process(ctx, e))
 		}
-		recombine.flushUncombined(ctx)
+		recombine.flushAllSources(ctx)
 	}
 }
 
@@ -493,7 +638,7 @@ func BenchmarkRecombineLimitTrigger(b *testing.B) {
 		require.NoError(b, recombine.Process(ctx, next))
 		require.NoError(b, recombine.Process(ctx, start))
 		require.NoError(b, recombine.Process(ctx, next))
-		recombine.flushUncombined(ctx)
+		recombine.flushAllSources(ctx)
 	}
 
 }
@@ -565,12 +710,21 @@ func TestTimeoutWhenAggregationKeepHappen(t *testing.T) {
 	require.NoError(t, recombine.Start(nil))
 	require.NoError(t, recombine.Process(ctx, e))
 
+	done := make(chan struct{})
+	ticker := time.NewTicker(cfg.ForceFlushTimeout / 2)
 	go func() {
-		next := e.Copy()
+		next := entry.New()
+		next.Timestamp = time.Now()
 		next.Body = "next"
 		for {
-			time.Sleep(cfg.ForceFlushTimeout / 2)
-			require.NoError(t, recombine.Process(ctx, next))
+			select {
+			case <-done:
+				ticker.Stop()
+				return
+			case <-ticker.C:
+				require.NoError(t, recombine.Process(ctx, next))
+
+			}
 		}
 	}()
 
@@ -581,6 +735,7 @@ func TestTimeoutWhenAggregationKeepHappen(t *testing.T) {
 		t.FailNow()
 	}
 	require.NoError(t, recombine.Stop())
+	close(done)
 }
 
 func TestSourceBatchDelete(t *testing.T) {
@@ -607,14 +762,20 @@ func TestSourceBatchDelete(t *testing.T) {
 	next := entry.New()
 	next.Timestamp = time.Now()
 	next.Body = "next"
-	start.AddAttribute("file.path", "file1")
+	next.AddAttribute("file.path", "file1")
+
+	expect := entry.New()
+	expect.ObservedTimestamp = start.ObservedTimestamp
+	expect.Timestamp = start.Timestamp
+	expect.AddAttribute("file.path", "file1")
+	expect.Body = "start\nnext"
 
 	ctx := context.Background()
 
 	require.NoError(t, recombine.Process(ctx, start))
-	require.NoError(t, recombine.Process(ctx, next))
 	require.Equal(t, 1, len(recombine.batchMap))
-	require.NoError(t, recombine.flushSource("file1", true))
+	require.NoError(t, recombine.Process(ctx, next))
 	require.Equal(t, 0, len(recombine.batchMap))
+	fake.ExpectEntry(t, expect)
 	require.NoError(t, recombine.Stop())
 }

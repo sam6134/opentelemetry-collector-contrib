@@ -13,9 +13,9 @@ import (
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/config/confignet"
 	"go.opentelemetry.io/collector/config/configopaque"
+	"go.opentelemetry.io/collector/config/configretry"
 	"go.opentelemetry.io/collector/confmap"
 	"go.opentelemetry.io/collector/exporter/exporterhelper"
-	"go.uber.org/multierr"
 	"go.uber.org/zap"
 
 	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/datadogexporter/internal/hostmetadata/valid"
@@ -55,7 +55,7 @@ type MetricsConfig struct {
 
 	// TCPAddr.Endpoint is the host of the Datadog intake server to send metrics to.
 	// If unset, the value is obtained from the Site.
-	confignet.TCPAddr `mapstructure:",squash"`
+	confignet.TCPAddrConfig `mapstructure:",squash"`
 
 	ExporterConfig MetricsExporterConfig `mapstructure:",squash"`
 
@@ -149,6 +149,37 @@ func (sm *CumulativeMonotonicSumMode) UnmarshalText(in []byte) error {
 	}
 }
 
+// InitialValueMode defines what the exporter should do with the initial value
+// of a time series when transforming from cumulative to delta.
+type InitialValueMode string
+
+const (
+	// InitialValueModeAuto reports the initial value if its start timestamp
+	// is set and it happens after the process was started.
+	InitialValueModeAuto InitialValueMode = "auto"
+
+	// InitialValueModeDrop always drops the initial value.
+	InitialValueModeDrop InitialValueMode = "drop"
+
+	// InitialValueModeKeep always reports the initial value.
+	InitialValueModeKeep InitialValueMode = "keep"
+)
+
+var _ encoding.TextUnmarshaler = (*InitialValueMode)(nil)
+
+// UnmarshalText implements the encoding.TextUnmarshaler interface.
+func (iv *InitialValueMode) UnmarshalText(in []byte) error {
+	switch mode := InitialValueMode(in); mode {
+	case InitialValueModeAuto,
+		InitialValueModeDrop,
+		InitialValueModeKeep:
+		*iv = mode
+		return nil
+	default:
+		return fmt.Errorf("invalid initial value mode %q", mode)
+	}
+}
+
 // SumConfig customizes export of OTLP Sums.
 type SumConfig struct {
 	// CumulativeMonotonicMode is the mode for exporting OTLP Cumulative Monotonic Sums.
@@ -159,6 +190,10 @@ type SumConfig struct {
 	// The default is 'to_delta'.
 	// See https://docs.datadoghq.com/metrics/otlp/?tab=sum#mapping for details and examples.
 	CumulativeMonotonicMode CumulativeMonotonicSumMode `mapstructure:"cumulative_monotonic_mode"`
+
+	// InitialCumulativeMonotonicMode defines the behavior of the exporter when receiving the first value
+	// of a cumulative monotonic sum.
+	InitialCumulativeMonotonicMode InitialValueMode `mapstructure:"initial_cumulative_monotonic_value"`
 }
 
 // SummaryMode is the export mode for OTLP Summary metrics.
@@ -213,7 +248,7 @@ type MetricsExporterConfig struct {
 type TracesConfig struct {
 	// TCPAddr.Endpoint is the host of the Datadog intake server to send traces to.
 	// If unset, the value is obtained from the Site.
-	confignet.TCPAddr `mapstructure:",squash"`
+	confignet.TCPAddrConfig `mapstructure:",squash"`
 
 	// ignored resources
 	// A blacklist of regular expressions can be provided to disable certain traces based on their resource name
@@ -243,7 +278,28 @@ type TracesConfig struct {
 	// For the best experience with `peer.service`, it is recommended to also enable `compute_stats_by_span_kind`.
 	// If enabling both causes the datadog exporter to consume too many resources, try disabling `compute_stats_by_span_kind` first.
 	// If the overhead remains high, it will be due to a high cardinality of `peer.service` values from the traces. You may need to check your instrumentation.
+	// Deprecated: Please use PeerTagsAggregation instead
 	PeerServiceAggregation bool `mapstructure:"peer_service_aggregation"`
+
+	// If set to true, enables aggregation of peer related tags (e.g., `peer.service`, `db.instance`, etc.) in the datadog exporter.
+	// If disabled, aggregated trace stats will not include these tags as dimensions on trace metrics.
+	// For the best experience with peer tags, Datadog also recommends enabling `compute_stats_by_span_kind`.
+	// If you are using an OTel tracer, it's best to have both enabled because client/producer spans with relevant peer tags
+	// may not be marked by the datadog exporter as top-level spans.
+	// If enabling both causes the datadog exporter to consume too many resources, try disabling `compute_stats_by_span_kind` first.
+	// A high cardinality of peer tags or APM resources can also contribute to higher CPU and memory consumption.
+	// You can check for the cardinality of these fields by making trace search queries in the Datadog UI.
+	// The default list of peer tags can be found in https://github.com/DataDog/datadog-agent/blob/main/pkg/trace/stats/concentrator.go.
+	PeerTagsAggregation bool `mapstructure:"peer_tags_aggregation"`
+
+	// [BETA] Optional list of supplementary peer tags that go beyond the defaults. The Datadog backend validates all tags
+	// and will drop ones that are unapproved. The default set of peer tags can be found at
+	// https://github.com/DataDog/datadog-agent/blob/505170c4ac8c3cbff1a61cf5f84b28d835c91058/pkg/trace/stats/concentrator.go#L55.
+	PeerTags []string `mapstructure:"peer_tags"`
+
+	// TraceBuffer specifies the number of Datadog Agent TracerPayloads to buffer before dropping.
+	// The default value is 0, meaning the Datadog Agent TracerPayloads are unbuffered.
+	TraceBuffer int `mapstructure:"trace_buffer"`
 
 	// flushInterval defines the interval in seconds at which the writer flushes traces
 	// to the intake; used in tests.
@@ -254,7 +310,7 @@ type TracesConfig struct {
 type LogsConfig struct {
 	// TCPAddr.Endpoint is the host of the Datadog intake server to send logs to.
 	// If unset, the value is obtained from the Site.
-	confignet.TCPAddr `mapstructure:",squash"`
+	confignet.TCPAddrConfig `mapstructure:",squash"`
 
 	// DumpPayloads report whether payloads should be dumped when logging level is debug.
 	DumpPayloads bool `mapstructure:"dump_payloads"`
@@ -326,14 +382,14 @@ type HostMetadataConfig struct {
 	Tags []string `mapstructure:"tags"`
 }
 
-// LimitedTLSClientSetting is a subset of TLSClientSetting, see LimitedHTTPClientSettings for more details
+// LimitedTLSClientSetting is a subset of TLSClientSetting, see LimitedClientConfig for more details
 type LimitedTLSClientSettings struct {
 	// InsecureSkipVerify controls whether a client verifies the server's
 	// certificate chain and host name.
 	InsecureSkipVerify bool `mapstructure:"insecure_skip_verify"`
 }
 
-type LimitedHTTPClientSettings struct {
+type LimitedClientConfig struct {
 	TLSSetting LimitedTLSClientSettings `mapstructure:"tls,omitempty"`
 }
 
@@ -341,9 +397,9 @@ type LimitedHTTPClientSettings struct {
 type Config struct {
 	exporterhelper.TimeoutSettings `mapstructure:",squash"` // squash ensures fields are correctly decoded in embedded struct.
 	exporterhelper.QueueSettings   `mapstructure:"sending_queue"`
-	exporterhelper.RetrySettings   `mapstructure:"retry_on_failure"`
+	configretry.BackOffConfig      `mapstructure:"retry_on_failure"`
 
-	LimitedHTTPClientSettings `mapstructure:",squash"`
+	LimitedClientConfig `mapstructure:",squash"`
 
 	TagsConfig `mapstructure:",squash"`
 
@@ -482,13 +538,15 @@ func (e renameError) Error() string {
 	)
 }
 
-func handleRemovedSettings(configMap *confmap.Conf) (err error) {
+func handleRemovedSettings(configMap *confmap.Conf) error {
+	var errs []error
 	for _, removedErr := range removedSettings {
 		if configMap.IsSet(removedErr.oldName) {
-			err = multierr.Append(err, removedErr)
+			errs = append(errs, removedErr)
 		}
 	}
-	return
+
+	return errors.Join(errs...)
 }
 
 var _ confmap.Unmarshaler = (*Config)(nil)
@@ -499,7 +557,7 @@ func (c *Config) Unmarshal(configMap *confmap.Conf) error {
 		return err
 	}
 
-	err := configMap.Unmarshal(c, confmap.WithErrorUnused())
+	err := configMap.Unmarshal(c)
 	if err != nil {
 		return err
 	}
@@ -515,18 +573,27 @@ func (c *Config) Unmarshal(configMap *confmap.Conf) error {
 
 	// If an endpoint is not explicitly set, override it based on the site.
 	if !configMap.IsSet("metrics::endpoint") {
-		c.Metrics.TCPAddr.Endpoint = fmt.Sprintf("https://api.%s", c.API.Site)
+		c.Metrics.TCPAddrConfig.Endpoint = fmt.Sprintf("https://api.%s", c.API.Site)
 	}
 	if !configMap.IsSet("traces::endpoint") {
-		c.Traces.TCPAddr.Endpoint = fmt.Sprintf("https://trace.agent.%s", c.API.Site)
+		c.Traces.TCPAddrConfig.Endpoint = fmt.Sprintf("https://trace.agent.%s", c.API.Site)
 	}
 	if !configMap.IsSet("logs::endpoint") {
-		c.Logs.TCPAddr.Endpoint = fmt.Sprintf("https://http-intake.logs.%s", c.API.Site)
+		c.Logs.TCPAddrConfig.Endpoint = fmt.Sprintf("https://http-intake.logs.%s", c.API.Site)
 	}
 
 	// Return an error if an endpoint is explicitly set to ""
-	if c.Metrics.TCPAddr.Endpoint == "" || c.Traces.TCPAddr.Endpoint == "" || c.Logs.TCPAddr.Endpoint == "" {
+	if c.Metrics.TCPAddrConfig.Endpoint == "" || c.Traces.TCPAddrConfig.Endpoint == "" || c.Logs.TCPAddrConfig.Endpoint == "" {
 		return errEmptyEndpoint
+	}
+
+	const (
+		initialValueSetting = "metrics::sums::initial_cumulative_monotonic_value"
+		cumulMonoMode       = "metrics::sums::cumulative_monotonic_mode"
+	)
+	if configMap.IsSet(initialValueSetting) && c.Metrics.SumConfig.CumulativeMonotonicMode != CumulativeMonotonicSumModeToDelta {
+		return fmt.Errorf("%q can only be configured when %q is set to %q",
+			initialValueSetting, cumulMonoMode, CumulativeMonotonicSumModeToDelta)
 	}
 
 	return nil

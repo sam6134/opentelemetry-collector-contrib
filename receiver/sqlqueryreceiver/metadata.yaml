@@ -6,3 +6,9 @@ status:
     alpha: [metrics]
     development: [logs]
   distributions: [contrib, splunk, observiq, sumo]
+  codeowners:
+    active: [dmitryax, crobert-1]
+    emeritus: [pmcollins]
+
+tests:
+  config:

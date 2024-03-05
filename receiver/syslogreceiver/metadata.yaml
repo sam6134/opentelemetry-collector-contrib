@@ -5,4 +5,12 @@ status:
   stability:
     alpha: [logs]
   distributions: [contrib, splunk, observiq, sumo]
+  codeowners:
+    active: [djaglowski]
+    seeking_new: true
 
+tests:
+  config:
+    tcp:
+      listen_address: "localhost:0"
+    protocol: "rfc5424"

@@ -5,4 +5,9 @@ status:
   stability:
     alpha: [traces, logs]
   distributions: [contrib]
+  codeowners:
+    active: [atoulme, emreyalvac]
 
+tests:
+  config:
+  skip_lifecycle: true

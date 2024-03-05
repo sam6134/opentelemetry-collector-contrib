@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
 //go:build windows
-// +build windows
 
 package iisreceiver // import "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/iisreceiver"
 
@@ -34,7 +33,8 @@ type iisReceiver struct {
 	siteWatcherRecorders    []watcherRecorder
 	appPoolWatcherRecorders []watcherRecorder
 	queueMaxAgeWatchers     []instanceWatcher
-	metricBuilder           *metadata.MetricsBuilder
+	rb                      *metadata.ResourceBuilder
+	mb                      *metadata.MetricsBuilder
 
 	// for mocking
 	newWatcher         func(string, string, string) (winperfcounters.PerfCounterWatcher, error)
@@ -60,7 +60,8 @@ func newIisReceiver(settings receiver.CreateSettings, cfg *Config, consumer cons
 		params:             settings.TelemetrySettings,
 		config:             cfg,
 		consumer:           consumer,
-		metricBuilder:      metadata.NewMetricsBuilder(cfg.MetricsBuilderConfig, settings),
+		rb:                 metadata.NewResourceBuilder(cfg.ResourceAttributes),
+		mb:                 metadata.NewMetricsBuilder(cfg.MetricsBuilderConfig, settings),
 		newWatcher:         winperfcounters.NewWatcher,
 		newWatcherFromPath: winperfcounters.NewWatcherFromPath,
 		expandWildcardPath: winperfcounters.ExpandWildCardPath,
@@ -68,7 +69,7 @@ func newIisReceiver(settings receiver.CreateSettings, cfg *Config, consumer cons
 }
 
 // start builds the paths to the watchers
-func (rcvr *iisReceiver) start(ctx context.Context, host component.Host) error {
+func (rcvr *iisReceiver) start(_ context.Context, _ component.Host) error {
 	errs := &scrapererror.ScrapeErrors{}
 
 	rcvr.totalWatcherRecorders = rcvr.buildWatcherRecorders(totalPerfCounterRecorders, errs)
@@ -80,7 +81,7 @@ func (rcvr *iisReceiver) start(ctx context.Context, host component.Host) error {
 }
 
 // scrape pulls counter values from the watchers
-func (rcvr *iisReceiver) scrape(ctx context.Context) (pmetric.Metrics, error) {
+func (rcvr *iisReceiver) scrape(_ context.Context) (pmetric.Metrics, error) {
 	var errs error
 	now := pcommon.NewTimestampFromTime(time.Now())
 
@@ -90,16 +91,16 @@ func (rcvr *iisReceiver) scrape(ctx context.Context) (pmetric.Metrics, error) {
 
 	siteToRecorders := map[string][]valRecorder{}
 	rcvr.scrapeInstanceMetrics(rcvr.siteWatcherRecorders, siteToRecorders)
-	rcvr.emitInstanceMap(now, siteToRecorders, metadata.WithIisSite)
+	rcvr.emitInstanceMap(now, siteToRecorders, rcvr.rb.SetIisSite)
 
 	appToRecorders := map[string][]valRecorder{}
 	rcvr.scrapeInstanceMetrics(rcvr.appPoolWatcherRecorders, appToRecorders)
 	rcvr.scrapeMaxQueueAgeMetrics(appToRecorders)
-	rcvr.emitInstanceMap(now, appToRecorders, metadata.WithIisApplicationPool)
+	rcvr.emitInstanceMap(now, appToRecorders, rcvr.rb.SetIisApplicationPool)
 
 	rcvr.scrapeTotalMetrics(now)
 
-	return rcvr.metricBuilder.Emit(), errs
+	return rcvr.mb.Emit(), errs
 }
 
 func (rcvr *iisReceiver) scrapeTotalMetrics(now pcommon.Timestamp) {
@@ -113,12 +114,12 @@ func (rcvr *iisReceiver) scrapeTotalMetrics(now pcommon.Timestamp) {
 		for _, counterValue := range counterValues {
 			value += counterValue.Value
 		}
-		wr.recorder(rcvr.metricBuilder, now, value)
+		wr.recorder(rcvr.mb, now, value)
 	}
 
 	// resource for total metrics is empty
 	// this makes it so that the order that the scrape functions are called doesn't matter
-	rcvr.metricBuilder.EmitForResource()
+	rcvr.mb.EmitForResource()
 }
 
 type valRecorder struct {
@@ -184,18 +185,18 @@ func (rcvr *iisReceiver) scrapeMaxQueueAgeMetrics(appToRecorders map[string][]va
 }
 
 // emitInstanceMap records all metrics for each instance, then emits them all as a single resource metric
-func (rcvr *iisReceiver) emitInstanceMap(now pcommon.Timestamp, instanceToRecorders map[string][]valRecorder, resourceOption func(string) metadata.ResourceMetricsOption) {
+func (rcvr *iisReceiver) emitInstanceMap(now pcommon.Timestamp, instanceToRecorders map[string][]valRecorder, resourceSetter func(string)) {
 	for instanceName, recorders := range instanceToRecorders {
 		for _, recorder := range recorders {
-			recorder.record(rcvr.metricBuilder, now, recorder.val)
+			recorder.record(rcvr.mb, now, recorder.val)
 		}
-
-		rcvr.metricBuilder.EmitForResource(resourceOption(instanceName))
+		resourceSetter(instanceName)
+		rcvr.mb.EmitForResource(metadata.WithResource(rcvr.rb.Emit()))
 	}
 }
 
 // shutdown closes the watchers
-func (rcvr iisReceiver) shutdown(ctx context.Context) error {
+func (rcvr iisReceiver) shutdown(_ context.Context) error {
 	var errs error
 	errs = multierr.Append(errs, closeWatcherRecorders(rcvr.totalWatcherRecorders))
 	errs = multierr.Append(errs, closeWatcherRecorders(rcvr.siteWatcherRecorders))

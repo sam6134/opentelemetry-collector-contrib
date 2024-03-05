@@ -19,7 +19,7 @@ import (
 var ctimeRegexp = regexp.MustCompile(`%.`)
 var decimalsRegexp = regexp.MustCompile(`\d`)
 
-var ctimeSubstitutes map[string]string = map[string]string{
+var ctimeSubstitutes = map[string]string{
 	"%Y": "2006",
 	"%y": "06",
 	"%m": "01",
@@ -44,7 +44,7 @@ var ctimeSubstitutes map[string]string = map[string]string{
 	"%f": "999999",
 	"%s": "99999999",
 	"%Z": "MST",
-	"%z": "-0700",
+	"%z": "Z0700",
 	"%w": "-070000",
 	"%i": "-07",
 	"%j": "-07:00",
@@ -129,9 +129,8 @@ func ToNative(format string) (string, error) {
 	replaceFunc := func(directive string) string {
 		if subst, ok := ctimeSubstitutes[directive]; ok {
 			return subst
-		} else {
-			errs = append(errs, errors.New("unsupported ctimefmt.ToNative() directive: "+directive))
 		}
+		errs = append(errs, errors.New("unsupported ctimefmt.ToNative() directive: "+directive))
 		return ""
 	}
 
