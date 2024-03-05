@@ -62,11 +62,17 @@ func NewSimplePromethuesScraper(opts SimplePromethuesScraperOpts, scraperConfig 
 		TelemetrySettings: opts.TelemetrySettings,
 	}
 
+	podresourcesstore := stores.NewPodResourcesStore(opts.Logger)
+	podresourcesstore.AddResourceName("aws.amazon.com/neuroncore")
+	podresourcesstore.AddResourceName("aws.amazon.com/neuron")
+	podresourcesstore.AddResourceName("aws.amazon.com/neurondevice")
+
 	decoConsumer := decorateConsumer{
 		containerOrchestrator: ci.EKS,
 		nextConsumer:          opts.Consumer,
 		k8sDecorator:          opts.K8sDecorator,
 		logger:                opts.Logger,
+		metricModifier:        *NewMetricModifier(opts.Logger, podresourcesstore),
 	}
 
 	promFactory := prometheusreceiver.NewFactory()
@@ -91,13 +97,6 @@ func (ds *SimplePromethuesScraper) GetMetrics() []pmetric.Metrics {
 	// this thing works, now just fixing the podresourcestore
 	//ds.settings.Logger.Info("static_pod_resources staring scrapping")
 	//stores.StartScraping(ds.settings.Logger)
-
-	podresourcesstore := stores.NewPodResourcesStore(ds.settings.Logger)
-	ds.settings.Logger.Info("Adding resources to PodResources")
-	podresourcesstore.AddResourceName("aws.amazon.com/neuroncore")
-	podresourcesstore.AddResourceName("aws.amazon.com/neuron")
-	podresourcesstore.AddResourceName("aws.amazon.com/neurondevice")
-	podresourcesstore.GetResourcesInfo("123", "123", "123")
 
 	if !ds.running {
 		ds.settings.Logger.Info("The scraper is not running, starting up the scraper")

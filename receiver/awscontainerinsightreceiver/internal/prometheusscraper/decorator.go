@@ -40,6 +40,7 @@ type decorateConsumer struct {
 	containerOrchestrator string
 	nextConsumer          consumer.Metrics
 	k8sDecorator          Decorator
+	metricModifier        MetricModifier
 	logger                *zap.Logger
 }
 
@@ -51,6 +52,7 @@ func (dc *decorateConsumer) Capabilities() consumer.Capabilities {
 
 func (dc *decorateConsumer) ConsumeMetrics(ctx context.Context, md pmetric.Metrics) error {
 	resourceTags := make(map[string]string)
+	md, _ = neuronMetricsProcess(md, &dc.metricModifier)
 	rms := md.ResourceMetrics()
 	for i := 0; i < rms.Len(); i++ {
 		// get resource attributes
@@ -78,6 +80,7 @@ func (dc *decorateConsumer) ConsumeMetrics(ctx context.Context, md pmetric.Metri
 			}
 		}
 	}
+	dc.logMd(md)
 	return dc.nextConsumer.ConsumeMetrics(ctx, md)
 }
 
@@ -188,4 +191,45 @@ func (dc *decorateConsumer) logMd(md pmetric.Metrics) {
 	logMessage.WriteString("},\n")
 
 	dc.logger.Info(logMessage.String())
+}
+
+func neuronMetricsProcess(md pmetric.Metrics, modifier *MetricModifier) (pmetric.Metrics, error) {
+	rms := md.ResourceMetrics()
+	for i := 0; i < rms.Len(); i++ {
+		rs := rms.At(i)
+		ilms := rs.ScopeMetrics()
+		for j := 0; j < ilms.Len(); j++ {
+			ils := ilms.At(j)
+			metrics := ils.Metrics()
+
+			// neuronHardwareInfo := pmetric.Metric{}
+			// for k := 0; k < metrics.Len(); k++ {
+			// 	m := metrics.At(k)
+			// 	if m.Name() == "neuroncore_per_device_count" {
+			// 		neuronHardwareInfo = m
+			// 		break
+			// 	}
+			// }
+
+			// neuronCoresPerDeviceValue, _ := neuronHardwareInfo.Gauge().DataPoints().At(0).Attributes().Get(neuronCorePerDeviceKey)
+			// neuronCoresPerDevice := neuronCoresPerDeviceValue.Int()
+
+			for k := 0; k < metrics.Len(); k++ {
+				m := metrics.At(k)
+				modifier.AddPodCorrelationAttributes(getMetricDatapoints(m), 2) // need to change this
+			}
+		}
+	}
+	return md, nil
+}
+
+func getMetricDatapoints(m pmetric.Metric) pmetric.NumberDataPointSlice {
+	switch m.Type() {
+	case pmetric.MetricTypeGauge:
+		return m.Gauge().DataPoints()
+	case pmetric.MetricTypeSum:
+		return m.Sum().DataPoints()
+	default:
+		return pmetric.NewNumberDataPointSlice()
+	}
 }

@@ -25,9 +25,9 @@ var (
 )
 
 type ContainerInfo struct {
-	podName       string
-	containerName string
-	namespace     string
+	PodName       string
+	ContainerName string
+	Namespace     string
 }
 
 type ResourceInfo struct {
@@ -128,9 +128,9 @@ func (p *PodResourcesStore) updateMaps() {
 			for _, device := range container.GetDevices() {
 
 				containerInfo := ContainerInfo{
-					podName:       pod.GetName(),
-					namespace:     pod.GetNamespace(),
-					containerName: container.GetName(),
+					PodName:       pod.GetName(),
+					Namespace:     pod.GetNamespace(),
+					ContainerName: container.GetName(),
 				}
 
 				for _, deviceID := range device.GetDeviceIds() {
@@ -143,7 +143,7 @@ func (p *PodResourcesStore) updateMaps() {
 						p.containerInfoToResourcesMap[containerInfo] = append(p.containerInfoToResourcesMap[containerInfo], resourceInfo)
 						p.resourceToPodContainerMap[resourceInfo] = containerInfo
 
-						p.logger.Info("/nContainerInfo : {" + containerInfo.namespace + "_" + containerInfo.podName + "_" + containerInfo.containerName + "}" + " -> ResourceInfo : {" + resourceInfo.resourceName + "_" + resourceInfo.deviceID + "_" + "}")
+						p.logger.Info("/nContainerInfo : {" + containerInfo.Namespace + "_" + containerInfo.PodName + "_" + containerInfo.ContainerName + "}" + " -> ResourceInfo : {" + resourceInfo.resourceName + "_" + resourceInfo.deviceID + "_" + "}")
 					}
 				}
 			}
@@ -160,7 +160,7 @@ func (p *PodResourcesStore) GetContainerInfo(deviceID string, resourceName strin
 }
 
 func (p *PodResourcesStore) GetResourcesInfo(podName string, containerName string, namespace string) *[]ResourceInfo {
-	key := ContainerInfo{podName: podName, containerName: containerName, namespace: namespace}
+	key := ContainerInfo{PodName: podName, ContainerName: containerName, Namespace: namespace}
 	if resourceInfo, ok := p.containerInfoToResourcesMap[key]; ok {
 		return &resourceInfo
 	}
@@ -174,7 +174,7 @@ func (p *PodResourcesStore) AddResourceName(resourceName string) {
 func (p *PodResourcesStore) PrintMaps() {
 	p.logger.Info("containerInfoToResourcesMap:")
 	for containerInfo, resourceInfos := range p.containerInfoToResourcesMap {
-		p.logger.Info("ContainerInfo-" + containerInfo.containerName + " ; " + containerInfo.podName)
+		p.logger.Info("ContainerInfo-" + containerInfo.ContainerName + " ; " + containerInfo.PodName)
 		p.logger.Info("ResourceInfos:")
 		for _, resourceInfo := range resourceInfos {
 			p.logger.Info("ResourceInfo-" + resourceInfo.resourceName + " ; " + resourceInfo.deviceID)
@@ -183,7 +183,7 @@ func (p *PodResourcesStore) PrintMaps() {
 	p.logger.Info("\nresourceToPodContainerMap:")
 	for resourceInfo, containerInfo := range p.resourceToPodContainerMap {
 		p.logger.Info("ResourceInfo-" + resourceInfo.resourceName + " ; " + resourceInfo.deviceID)
-		p.logger.Info("ContainerInfo-" + containerInfo.containerName + " ; " + containerInfo.podName)
+		p.logger.Info("ContainerInfo-" + containerInfo.ContainerName + " ; " + containerInfo.PodName)
 	}
 }
 
