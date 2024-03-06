@@ -5,8 +5,6 @@ package gpu
 
 import (
 	"context"
-	"errors"
-	"fmt"
 	"time"
 
 	"github.com/prometheus/common/model"
@@ -16,13 +14,11 @@ import (
 	"github.com/prometheus/prometheus/model/relabel"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/consumer"
-	"go.opentelemetry.io/collector/pdata/pmetric"
 	"go.opentelemetry.io/collector/receiver"
 	"go.uber.org/zap"
 
 	ci "github.com/open-telemetry/opentelemetry-collector-contrib/internal/aws/containerinsight"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awscontainerinsightreceiver/internal/prometheusscraper"
-	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/prometheusreceiver"
 )
 
 const (
@@ -58,52 +54,7 @@ type hostInfoProvider interface {
 	GetInstanceID() string
 }
 
-func NewDcgmScraper(opts DcgmScraperOpts) (*DcgmScraper, error) {
-	if opts.Consumer == nil {
-		return nil, errors.New("consumer cannot be nil")
-	}
-	if opts.Host == nil {
-		return nil, errors.New("host cannot be nil")
-	}
-	if opts.HostInfoProvider == nil {
-		return nil, errors.New("cluster name provider cannot be nil")
-	}
-
-	promConfig := prometheusreceiver.Config{
-		PrometheusConfig: &config.Config{
-			ScrapeConfigs: []*config.ScrapeConfig{getScraperConfig(opts.HostInfoProvider)},
-		},
-	}
-
-	params := receiver.CreateSettings{
-		TelemetrySettings: opts.TelemetrySettings,
-	}
-
-	decoConsumer := prometheusscraper.DecorateConsumer{
-		ContainerOrchestrator: ci.EKS,
-		NextConsumer:          opts.Consumer,
-		K8sDecorator:          opts.K8sDecorator,
-		MetricToUnitMap:       metricToUnit,
-		Logger:                opts.Logger,
-	}
-
-	promFactory := prometheusreceiver.NewFactory()
-	promReceiver, err := promFactory.CreateMetricsReceiver(opts.Ctx, params, &promConfig, &decoConsumer)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create prometheus receiver: %w", err)
-	}
-
-	return &DcgmScraper{
-		ctx:                opts.Ctx,
-		settings:           opts.TelemetrySettings,
-		host:               opts.Host,
-		hostInfoProvider:   opts.HostInfoProvider,
-		prometheusReceiver: promReceiver,
-		k8sDecorator:       opts.K8sDecorator,
-	}, nil
-}
-
-func getScraperConfig(hostInfoProvider hostInfoProvider) *config.ScrapeConfig {
+func GetScraperConfig(hostInfoProvider hostInfoProvider) *config.ScrapeConfig {
 	return &config.ScrapeConfig{
 		ScrapeInterval: model.Duration(collectionInterval),
 		ScrapeTimeout:  model.Duration(collectionInterval),
@@ -194,37 +145,5 @@ func getMetricRelabelConfig(hostInfoProvider hostInfoProvider) []*relabel.Config
 			Replacement:  "${1}",
 			Action:       relabel.Replace,
 		},
-	}
-}
-
-func (ds *DcgmScraper) GetMetrics() []pmetric.Metrics {
-	// This method will never return metrics because the metrics are collected by the scraper.
-	// This method will ensure the scraper is running
-	if !ds.running {
-		ds.settings.Logger.Info("The scraper is not running, starting up the scraper")
-		err := ds.prometheusReceiver.Start(ds.ctx, ds.host)
-		if err != nil {
-			ds.settings.Logger.Error("Unable to start PrometheusReceiver", zap.Error(err))
-		}
-		ds.running = err == nil
-	}
-
-	return nil
-}
-
-func (ds *DcgmScraper) Shutdown() {
-	if ds.running {
-		err := ds.prometheusReceiver.Shutdown(ds.ctx)
-		if err != nil {
-			ds.settings.Logger.Error("Unable to shutdown PrometheusReceiver", zap.Error(err))
-		}
-		ds.running = false
-	}
-
-	if ds.k8sDecorator != nil {
-		err := ds.k8sDecorator.Shutdown()
-		if err != nil {
-			ds.settings.Logger.Error("Unable to shutdown K8sDecorator", zap.Error(err))
-		}
 	}
 }

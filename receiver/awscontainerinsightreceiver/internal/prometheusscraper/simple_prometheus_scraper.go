@@ -15,11 +15,11 @@ import (
 )
 
 type SimplePrometheusScraper struct {
-	ctx                context.Context
-	settings           component.TelemetrySettings
+	Ctx                context.Context
+	Settings           component.TelemetrySettings
 	host               component.Host
-	hostInfoProvider   HostInfoProvider
-	prometheusReceiver receiver.Metrics
+	HostInfoProvider   HostInfoProvider
+	PrometheusReceiver receiver.Metrics
 	running            bool
 }
 
@@ -66,11 +66,11 @@ func NewSimplePrometheusScraper(opts SimplePrometheusScraperOpts) (*SimplePromet
 	}
 
 	return &SimplePrometheusScraper{
-		ctx:                opts.Ctx,
-		settings:           opts.TelemetrySettings,
+		Ctx:                opts.Ctx,
+		Settings:           opts.TelemetrySettings,
 		host:               opts.Host,
-		hostInfoProvider:   opts.HostInfoProvider,
-		prometheusReceiver: promReceiver,
+		HostInfoProvider:   opts.HostInfoProvider,
+		PrometheusReceiver: promReceiver,
 	}, nil
 }
 
@@ -79,10 +79,10 @@ func (ds *SimplePrometheusScraper) GetMetrics() []pmetric.Metrics {
 	// This method will ensure the scraper is running
 
 	if !ds.running {
-		ds.settings.Logger.Info("The scraper is not running, starting up the scraper")
-		err := ds.prometheusReceiver.Start(ds.ctx, ds.host)
+		ds.Settings.Logger.Info("The scraper is not running, starting up the scraper")
+		err := ds.PrometheusReceiver.Start(ds.Ctx, ds.host)
 		if err != nil {
-			ds.settings.Logger.Error("Unable to start PrometheusReceiver", zap.Error(err))
+			ds.Settings.Logger.Error("Unable to start PrometheusReceiver", zap.Error(err))
 		}
 		ds.running = err == nil
 	}
@@ -91,9 +91,9 @@ func (ds *SimplePrometheusScraper) GetMetrics() []pmetric.Metrics {
 
 func (ds *SimplePrometheusScraper) Shutdown() {
 	if ds.running {
-		err := ds.prometheusReceiver.Shutdown(ds.ctx)
+		err := ds.PrometheusReceiver.Shutdown(ds.Ctx)
 		if err != nil {
-			ds.settings.Logger.Error("Unable to shutdown PrometheusReceiver", zap.Error(err))
+			ds.Settings.Logger.Error("Unable to shutdown PrometheusReceiver", zap.Error(err))
 		}
 		ds.running = false
 	}

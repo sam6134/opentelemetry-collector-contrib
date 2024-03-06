@@ -150,12 +150,12 @@ const (
 	TypeContainerDiskIO    = "ContainerDiskIO"
 	// Special type for pause container
 	// because containerd does not set container name pause container name to POD like docker does.
-	TypeInfraContainer = "InfraContainer"
-	TypeGpuContainer   = "ContainerGPU"
-	TypeGpuPod         = "PodGPU"
-	TypeGpuNode        = "NodeGPU"
-	TypeGpuCluster     = "ClusterGPU"
-	TypeNeuron         = "ContainerNeuron"
+	TypeInfraContainer  = "InfraContainer"
+	TypeGpuContainer    = "ContainerGPU"
+	TypeGpuPod          = "PodGPU"
+	TypeGpuNode         = "NodeGPU"
+	TypeGpuCluster      = "ClusterGPU"
+	TypeNeuronContainer = "ContainerNeuron"
 
 	// unit
 	UnitBytes       = "Bytes"

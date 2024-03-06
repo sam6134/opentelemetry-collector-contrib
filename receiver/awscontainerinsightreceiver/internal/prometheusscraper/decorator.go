@@ -20,6 +20,7 @@ type DecorateConsumer struct {
 	ContainerOrchestrator string
 	NextConsumer          consumer.Metrics
 	K8sDecorator          Decorator
+	MetricType            string
 	MetricToUnitMap       map[string]string
 	Logger                *zap.Logger
 }
@@ -48,7 +49,7 @@ func (dc *DecorateConsumer) ConsumeMetrics(ctx context.Context, md pmetric.Metri
 				converted := ci.ConvertToFieldsAndTags(m, dc.Logger)
 				var rcis []*stores.RawContainerInsightsMetric
 				for _, pair := range converted {
-					rcis = append(rcis, stores.NewRawContainerInsightsMetricWithData(ci.TypeGpuContainer, pair.Fields, pair.Tags, dc.Logger))
+					rcis = append(rcis, stores.NewRawContainerInsightsMetricWithData(dc.MetricType, pair.Fields, pair.Tags, dc.Logger))
 				}
 
 				decorated := dc.decorateMetrics(rcis)

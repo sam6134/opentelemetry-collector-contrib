@@ -171,22 +171,6 @@ func (p *PodResourcesStore) AddResourceName(resourceName string) {
 	p.resourceNameSet[resourceName] = struct{}{}
 }
 
-func (p *PodResourcesStore) PrintMaps() {
-	p.logger.Info("containerInfoToResourcesMap:")
-	for containerInfo, resourceInfos := range p.containerInfoToResourcesMap {
-		p.logger.Info("ContainerInfo-" + containerInfo.ContainerName + " ; " + containerInfo.PodName)
-		p.logger.Info("ResourceInfos:")
-		for _, resourceInfo := range resourceInfos {
-			p.logger.Info("ResourceInfo-" + resourceInfo.resourceName + " ; " + resourceInfo.deviceID)
-		}
-	}
-	p.logger.Info("\nresourceToPodContainerMap:")
-	for resourceInfo, containerInfo := range p.resourceToPodContainerMap {
-		p.logger.Info("ResourceInfo-" + resourceInfo.resourceName + " ; " + resourceInfo.deviceID)
-		p.logger.Info("ContainerInfo-" + containerInfo.ContainerName + " ; " + containerInfo.PodName)
-	}
-}
-
 func (p *PodResourcesStore) UpdateAndPrintMapsManually() {
 	// this also has embedded print statement
 	p.updateMaps()
