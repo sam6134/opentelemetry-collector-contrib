@@ -2,8 +2,6 @@ module github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awscon
 
 go 1.21
 
-toolchain go1.22.0
-
 require (
 	github.com/amazon-contributing/opentelemetry-collector-contrib/override/aws v0.0.0-00010101000000-000000000000
 	github.com/aws/aws-sdk-go v1.47.10
