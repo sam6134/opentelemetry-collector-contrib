@@ -21,6 +21,7 @@ import (
 
 	ci "github.com/open-telemetry/opentelemetry-collector-contrib/internal/aws/containerinsight"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awscontainerinsightreceiver/internal/mocks"
+	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awscontainerinsightreceiver/internal/prometheusscraper"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awscontainerinsightreceiver/internal/stores"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/prometheusreceiver"
 )
@@ -103,42 +104,6 @@ func (m mockConsumer) ConsumeMetrics(_ context.Context, md pmetric.Metrics) erro
 	return nil
 }
 
-func TestNewDcgmScraperBadInputs(t *testing.T) {
-	settings := componenttest.NewNopTelemetrySettings()
-	settings.Logger, _ = zap.NewDevelopment()
-
-	tests := []DcgmScraperOpts{
-		{
-			Ctx:               context.TODO(),
-			TelemetrySettings: settings,
-			Consumer:          nil,
-			Host:              componenttest.NewNopHost(),
-			HostInfoProvider:  mockHostInfoProvider{},
-		},
-		{
-			Ctx:               context.TODO(),
-			TelemetrySettings: settings,
-			Consumer:          mockConsumer{},
-			Host:              nil,
-			HostInfoProvider:  mockHostInfoProvider{},
-		},
-		{
-			Ctx:               context.TODO(),
-			TelemetrySettings: settings,
-			Consumer:          mockConsumer{},
-			Host:              componenttest.NewNopHost(),
-			HostInfoProvider:  nil,
-		},
-	}
-
-	for _, tt := range tests {
-		scraper, err := NewDcgmScraper(tt)
-
-		assert.Error(t, err)
-		assert.Nil(t, scraper)
-	}
-}
-
 func TestNewDcgmScraperEndToEnd(t *testing.T) {
 	expected := map[string]struct {
 		value  float64
@@ -182,16 +147,17 @@ func TestNewDcgmScraperEndToEnd(t *testing.T) {
 	settings := componenttest.NewNopTelemetrySettings()
 	settings.Logger, _ = zap.NewDevelopment()
 
-	scraper, err := NewDcgmScraper(DcgmScraperOpts{
+	scraper, err := prometheusscraper.NewSimplePrometheusScraper(prometheusscraper.SimplePrometheusScraperOpts{
 		Ctx:               context.TODO(),
 		TelemetrySettings: settings,
 		Consumer:          consumer,
 		Host:              componenttest.NewNopHost(),
 		HostInfoProvider:  mockHostInfoProvider{},
-		K8sDecorator:      mockDecorator{},
+		ScraperConfigs:    GetScraperConfig(mockHostInfoProvider{}),
+		Logger:            settings.Logger,
 	})
 	assert.NoError(t, err)
-	assert.Equal(t, mockHostInfoProvider{}, scraper.hostInfoProvider)
+	assert.Equal(t, mockHostInfoProvider{}, scraper.HostInfoProvider)
 
 	// build up a new PR
 	promFactory := prometheusreceiver.NewFactory()
@@ -207,7 +173,7 @@ func TestNewDcgmScraperEndToEnd(t *testing.T) {
 	mp, cfg, err := mocks.SetupMockPrometheus(targets...)
 	assert.NoError(t, err)
 
-	scrapeConfig := getScraperConfig(scraper.hostInfoProvider)
+	scrapeConfig := GetScraperConfig(scraper.HostInfoProvider)
 	scrapeConfig.ScrapeInterval = cfg.ScrapeConfigs[0].ScrapeInterval
 	scrapeConfig.ScrapeTimeout = cfg.ScrapeConfigs[0].ScrapeInterval
 	scrapeConfig.Scheme = "http"
@@ -238,9 +204,10 @@ func TestNewDcgmScraperEndToEnd(t *testing.T) {
 
 	// replace the prom receiver
 	params := receiver.CreateSettings{
-		TelemetrySettings: scraper.settings,
+		TelemetrySettings: scraper.Settings,
 	}
-	scraper.prometheusReceiver, err = promFactory.CreateMetricsReceiver(scraper.ctx, params, &promConfig, consumer)
+	scraper.PrometheusReceiver, err = promFactory.CreateMetricsReceiver(scraper.Ctx, params, &promConfig, consumer)
+
 	assert.NoError(t, err)
 	assert.NotNil(t, mp)
 	defer mp.Close()

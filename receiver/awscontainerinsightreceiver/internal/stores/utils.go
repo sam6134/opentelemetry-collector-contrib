@@ -125,6 +125,8 @@ func TagMetricSource(metric CIMetric) {
 		sources = append(sources, []string{"cadvisor"}...)
 	case ci.TypeGpuContainer:
 		sources = append(sources, []string{"dcgm", "pod", "calculated"}...)
+	case ci.TypeNeuronContainer:
+		sources = append(sources, []string{"neuron", "pod", "calculated"}...)
 	}
 
 	if len(sources) > 0 {
