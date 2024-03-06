@@ -207,6 +207,7 @@ func TestNewDcgmScraperEndToEnd(t *testing.T) {
 		TelemetrySettings: scraper.Settings,
 	}
 	scraper.PrometheusReceiver, err = promFactory.CreateMetricsReceiver(scraper.Ctx, params, &promConfig, consumer)
+
 	assert.NoError(t, err)
 	assert.NotNil(t, mp)
 	defer mp.Close()
