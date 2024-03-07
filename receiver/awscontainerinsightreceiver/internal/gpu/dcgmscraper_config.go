@@ -18,7 +18,7 @@ import (
 	"go.uber.org/zap"
 
 	ci "github.com/open-telemetry/opentelemetry-collector-contrib/internal/aws/containerinsight"
-	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awscontainerinsightreceiver/internal/prometheusscraper"
+	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awscontainerinsightreceiver/internal/prometheusscraper/decoratorconsumer"
 )
 
 const (
@@ -35,7 +35,7 @@ type DcgmScraper struct {
 	host               component.Host
 	hostInfoProvider   hostInfoProvider
 	prometheusReceiver receiver.Metrics
-	k8sDecorator       prometheusscraper.Decorator
+	k8sDecorator       decoratorconsumer.Decorator
 	running            bool
 }
 
@@ -45,7 +45,7 @@ type DcgmScraperOpts struct {
 	Consumer          consumer.Metrics
 	Host              component.Host
 	HostInfoProvider  hostInfoProvider
-	K8sDecorator      prometheusscraper.Decorator
+	K8sDecorator      decoratorconsumer.Decorator
 	Logger            *zap.Logger
 }
 
