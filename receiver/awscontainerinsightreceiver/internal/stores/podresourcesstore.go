@@ -31,8 +31,8 @@ type ContainerInfo struct {
 }
 
 type ResourceInfo struct {
-	resourceName string
-	deviceID     string
+	ResourceName string
+	DeviceID     string
 }
 
 type PodResourcesClientInterface interface {
@@ -53,7 +53,7 @@ type PodResourcesStore struct {
 
 func NewPodResourcesStore(logger *zap.Logger) *PodResourcesStore {
 	once.Do(func() {
-		podResourcesClient, _ := kubeletutil.NewPodResourcesClient(logger)
+		podResourcesClient, _ := kubeletutil.NewPodResourcesClient()
 		ctx, cancel := context.WithCancel(context.Background())
 		instance = &PodResourcesStore{
 			containerInfoToResourcesMap: make(map[ContainerInfo][]ResourceInfo),
@@ -71,22 +71,18 @@ func NewPodResourcesStore(logger *zap.Logger) *PodResourcesStore {
 			for {
 				select {
 				case <-refreshTicker.C:
-					logger.Info("entered refresh tick")
 					instance.refreshTick()
 				case <-instance.ctx.Done():
-					logger.Info("stopping refresh tick")
 					refreshTicker.Stop()
 					return
 				}
 			}
 		}()
-		time.Sleep(40)
 	})
 	return instance
 }
 
 func (p *PodResourcesStore) refreshTick() {
-	p.logger.Info("PodResources entered refreshTick")
 	now := time.Now()
 	if now.Sub(p.lastRefreshed) >= taskTimeout {
 		p.refresh()
@@ -95,9 +91,7 @@ func (p *PodResourcesStore) refreshTick() {
 }
 
 func (p *PodResourcesStore) refresh() {
-	p.logger.Info("PodResources entered refresh")
 	doRefresh := func() {
-		p.logger.Info("PodResources entering update map")
 		p.updateMaps()
 	}
 
@@ -114,15 +108,12 @@ func (p *PodResourcesStore) updateMaps() {
 	}
 
 	devicePods, err := p.podResourcesClient.ListPods()
-	if err != nil {
-		p.logger.Info("PodResources ListPods calling error: " + err.Error())
-	}
+
 	if err != nil {
 		p.logger.Error(fmt.Sprintf("Error getting pod resources: %v", err))
 		return
 	}
 
-	p.logger.Info("PodResources updating device info with result : " + devicePods.String())
 	for _, pod := range devicePods.GetPodResources() {
 		for _, container := range pod.GetContainers() {
 			for _, device := range container.GetDevices() {
@@ -135,15 +126,13 @@ func (p *PodResourcesStore) updateMaps() {
 
 				for _, deviceID := range device.GetDeviceIds() {
 					resourceInfo := ResourceInfo{
-						resourceName: device.GetResourceName(),
-						deviceID:     deviceID,
+						ResourceName: device.GetResourceName(),
+						DeviceID:     deviceID,
 					}
-					_, found := p.resourceNameSet[resourceInfo.resourceName]
+					_, found := p.resourceNameSet[resourceInfo.ResourceName]
 					if found {
 						p.containerInfoToResourcesMap[containerInfo] = append(p.containerInfoToResourcesMap[containerInfo], resourceInfo)
 						p.resourceToPodContainerMap[resourceInfo] = containerInfo
-
-						p.logger.Info("/nContainerInfo : {" + containerInfo.Namespace + "_" + containerInfo.PodName + "_" + containerInfo.ContainerName + "}" + " -> ResourceInfo : {" + resourceInfo.resourceName + "_" + resourceInfo.deviceID + "_" + "}")
 					}
 				}
 			}
@@ -152,7 +141,7 @@ func (p *PodResourcesStore) updateMaps() {
 }
 
 func (p *PodResourcesStore) GetContainerInfo(deviceID string, resourceName string) *ContainerInfo {
-	key := ResourceInfo{deviceID: deviceID, resourceName: resourceName}
+	key := ResourceInfo{DeviceID: deviceID, ResourceName: resourceName}
 	if containerInfo, ok := p.resourceToPodContainerMap[key]; ok {
 		return &containerInfo
 	}
@@ -169,11 +158,6 @@ func (p *PodResourcesStore) GetResourcesInfo(podName string, containerName strin
 
 func (p *PodResourcesStore) AddResourceName(resourceName string) {
 	p.resourceNameSet[resourceName] = struct{}{}
-}
-
-func (p *PodResourcesStore) UpdateAndPrintMapsManually() {
-	// this also has embedded print statement
-	p.updateMaps()
 }
 
 func (p *PodResourcesStore) Shutdown() {
