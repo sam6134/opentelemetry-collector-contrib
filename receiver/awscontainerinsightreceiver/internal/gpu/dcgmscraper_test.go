@@ -22,7 +22,6 @@ import (
 	ci "github.com/open-telemetry/opentelemetry-collector-contrib/internal/aws/containerinsight"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awscontainerinsightreceiver/internal/mocks"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awscontainerinsightreceiver/internal/prometheusscraper"
-	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awscontainerinsightreceiver/internal/stores"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/prometheusreceiver"
 )
 
@@ -49,17 +48,6 @@ func (m mockHostInfoProvider) GetClusterName() string {
 
 func (m mockHostInfoProvider) GetInstanceID() string {
 	return dummyInstanceID
-}
-
-type mockDecorator struct {
-}
-
-func (m mockDecorator) Decorate(metric stores.CIMetric) stores.CIMetric {
-	return metric
-}
-
-func (m mockDecorator) Shutdown() error {
-	return nil
 }
 
 type mockConsumer struct {

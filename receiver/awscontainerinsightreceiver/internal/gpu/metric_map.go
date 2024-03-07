@@ -9,7 +9,7 @@ const (
 	gpuPowerDraw   = "DCGM_FI_DEV_POWER_USAGE"
 )
 
-var metricToUnit = map[string]string{
+var MetricToUnit = map[string]string{
 	gpuUtil:        "Percent",
 	gpuMemUtil:     "Percent",
 	gpuMemUsed:     "Bytes",

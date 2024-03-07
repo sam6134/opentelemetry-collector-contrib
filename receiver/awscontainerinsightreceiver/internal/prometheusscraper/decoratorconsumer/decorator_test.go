@@ -55,12 +55,12 @@ func TestConsumeMetrics(t *testing.T) {
 
 	testcases := map[string]TestCase{
 		"empty": {
-			metrics:     pmetric.NewMetrics(),
-			want:        pmetric.NewMetrics(),
-			shouldError: false,
+			Metrics:     pmetric.NewMetrics(),
+			Want:        pmetric.NewMetrics(),
+			ShouldError: false,
 		},
 		"unit": {
-			metrics: GenerateMetrics(map[MetricIdentifier]map[string]string{
+			Metrics: GenerateMetrics(map[MetricIdentifier]map[string]string{
 				{util, pmetric.MetricTypeGauge}: {
 					"device": "test0",
 				},
@@ -80,7 +80,7 @@ func TestConsumeMetrics(t *testing.T) {
 					"device": "test0",
 				},
 			}),
-			want: GenerateMetrics(map[MetricIdentifier]map[string]string{
+			Want: GenerateMetrics(map[MetricIdentifier]map[string]string{
 				{util, pmetric.MetricTypeGauge}: {
 					"device": "test0",
 					"Unit":   "Percent",
@@ -106,36 +106,36 @@ func TestConsumeMetrics(t *testing.T) {
 					"Unit":   "None",
 				},
 			}),
-			shouldError: false,
+			ShouldError: false,
 		},
 		"noUnit": {
-			metrics: GenerateMetrics(map[MetricIdentifier]map[string]string{
+			Metrics: GenerateMetrics(map[MetricIdentifier]map[string]string{
 				{"test", pmetric.MetricTypeGauge}: {
 					"device": "test0",
 				},
 			}),
-			want: GenerateMetrics(map[MetricIdentifier]map[string]string{
+			Want: GenerateMetrics(map[MetricIdentifier]map[string]string{
 				{"test", pmetric.MetricTypeGauge}: {
 					"device": "test0",
 				},
 			}),
-			shouldError: false,
+			ShouldError: false,
 		},
 		"typeUnchanged": {
-			metrics: GenerateMetrics(map[MetricIdentifier]map[string]string{
+			Metrics: GenerateMetrics(map[MetricIdentifier]map[string]string{
 				{util, pmetric.MetricTypeGauge}: {
 					"device": "test0",
 					"Type":   "TestType",
 				},
 			}),
-			want: GenerateMetrics(map[MetricIdentifier]map[string]string{
+			Want: GenerateMetrics(map[MetricIdentifier]map[string]string{
 				{util, pmetric.MetricTypeGauge}: {
 					"device": "test0",
 					"Type":   "TestType",
 					"Unit":   "Percent",
 				},
 			}),
-			shouldError: false,
+			ShouldError: false,
 		},
 	}
 

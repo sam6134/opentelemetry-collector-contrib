@@ -4,50 +4,25 @@
 package gpu
 
 import (
-	"context"
 	"time"
 
+	configutil "github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/config"
 	"github.com/prometheus/prometheus/discovery"
 	"github.com/prometheus/prometheus/discovery/kubernetes"
 	"github.com/prometheus/prometheus/model/relabel"
-	"go.opentelemetry.io/collector/component"
-	"go.opentelemetry.io/collector/consumer"
-	"go.opentelemetry.io/collector/receiver"
-	"go.uber.org/zap"
 
 	ci "github.com/open-telemetry/opentelemetry-collector-contrib/internal/aws/containerinsight"
-	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awscontainerinsightreceiver/internal/prometheusscraper/decoratorconsumer"
 )
 
 const (
-	caFile                    = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
+	caFile                    = "/etc/amazon-cloudwatch-observability-agent-cert/tls-ca.crt"
 	collectionInterval        = 60 * time.Second
 	jobName                   = "containerInsightsDCGMExporterScraper"
 	scraperMetricsPath        = "/metrics"
 	scraperK8sServiceSelector = "k8s-app=dcgm-exporter-service"
 )
-
-type DcgmScraper struct {
-	ctx                context.Context
-	settings           component.TelemetrySettings
-	host               component.Host
-	hostInfoProvider   hostInfoProvider
-	prometheusReceiver receiver.Metrics
-	k8sDecorator       decoratorconsumer.Decorator
-	running            bool
-}
-
-type DcgmScraperOpts struct {
-	Ctx               context.Context
-	TelemetrySettings component.TelemetrySettings
-	Consumer          consumer.Metrics
-	Host              component.Host
-	HostInfoProvider  hostInfoProvider
-	K8sDecorator      decoratorconsumer.Decorator
-	Logger            *zap.Logger
-}
 
 type hostInfoProvider interface {
 	GetClusterName() string
@@ -56,10 +31,16 @@ type hostInfoProvider interface {
 
 func GetScraperConfig(hostInfoProvider hostInfoProvider) *config.ScrapeConfig {
 	return &config.ScrapeConfig{
+		HTTPClientConfig: configutil.HTTPClientConfig{
+			TLSConfig: configutil.TLSConfig{
+				CAFile:             caFile,
+				InsecureSkipVerify: false,
+			},
+		},
 		ScrapeInterval: model.Duration(collectionInterval),
 		ScrapeTimeout:  model.Duration(collectionInterval),
 		JobName:        jobName,
-		Scheme:         "http",
+		Scheme:         "https",
 		MetricsPath:    scraperMetricsPath,
 		ServiceDiscoveryConfigs: discovery.Configs{
 			&kubernetes.SDConfig{

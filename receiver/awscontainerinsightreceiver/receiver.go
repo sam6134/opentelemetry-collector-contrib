@@ -195,7 +195,8 @@ func (acir *awsContainerInsightReceiver) initDcgmScraper(ctx context.Context, ho
 	decoConsumer := decoratorconsumer.DecorateConsumer{
 		ContainerOrchestrator: ci.EKS,
 		NextConsumer:          acir.nextConsumer,
-		MetricType:            ci.TypeNeuronContainer,
+		MetricType:            ci.TypeGpuContainer,
+		MetricToUnitMap:       gpu.MetricToUnit,
 		K8sDecorator:          decorator,
 		Logger:                acir.settings.Logger,
 	}
@@ -216,9 +217,9 @@ func (acir *awsContainerInsightReceiver) initDcgmScraper(ctx context.Context, ho
 }
 
 func (acir *awsContainerInsightReceiver) initNeuronScraper(ctx context.Context, host component.Host, hostinfo *hostInfo.Info, decorator *stores.K8sDecorator) error {
-	// if !acir.config.EnableNeuronMetric {
-	// 	return nil
-	// }
+	if !acir.config.EnableAwsNeuronMetrics {
+		return nil
+	}
 
 	decoConsumer := decoratorconsumer.DecorateConsumer{
 		ContainerOrchestrator: ci.EKS,
@@ -316,18 +317,13 @@ func (acir *awsContainerInsightReceiver) collectData(ctx context.Context) error 
 		acir.prometheusScraper.GetMetrics() //nolint:errcheck
 	}
 
-	// if acir.dcgmScraper != nil {
-	// 	acir.dcgmScraper.GetMetrics() //nolint:errcheck
-	// }
-
-	acir.settings.Logger.Info("We will start the Neuron Scraper")
-
-	if acir.neuronMonitorScraper != nil {
-		acir.settings.Logger.Info("Neuron Scraper is not NIL")
-		acir.neuronMonitorScraper.GetMetrics() //nolint:errcheck
+	if acir.dcgmScraper != nil {
+		acir.dcgmScraper.GetMetrics() //nolint:errcheck
 	}
 
-	acir.settings.Logger.Info("If this happened Neuron is started or not")
+	if acir.neuronMonitorScraper != nil {
+		acir.neuronMonitorScraper.GetMetrics() //nolint:errcheck
+	}
 
 	for _, md := range mds {
 		err := acir.nextConsumer.ConsumeMetrics(ctx, md)
