@@ -19,7 +19,7 @@ const (
 	neuronHardwareInfoKey       = "neuron_hardware"
 	neuronCorePerDeviceKey      = "neuroncore_per_device_count"
 	neuronCoreAttributeKey      = "neuroncore"
-	neuronDeviceAttributeKey    = "neuron_device_index"
+	neuronDeviceAttributeKey    = "NeuronDevice"
 	neuronCoreResourceName      = "aws.amazon.com/neuroncore"
 	neuronDeviceResourceName    = "aws.amazon.com/neurondevice"
 	neuronDeviceResourceNameAlt = "aws.amazon.com/neuron"

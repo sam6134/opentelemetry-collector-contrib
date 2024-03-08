@@ -23,7 +23,7 @@ var dummyNamespace = "namespace"
 type mockPodResourcesStore struct {
 }
 
-func (m mockPodResourcesStore) GetContainerInfo(deviceIndex string, resourceName string) *stores.ContainerInfo {
+func (m mockPodResourcesStore) GetContainerInfo(_ string, _ string) *stores.ContainerInfo {
 	return &stores.ContainerInfo{
 		PodName:       dummyPodName,
 		ContainerName: dummyContainerName,
@@ -34,7 +34,7 @@ func (m mockPodResourcesStore) GetContainerInfo(deviceIndex string, resourceName
 type mockPodResourcesStoreWithAltResourceName struct {
 }
 
-func (m mockPodResourcesStoreWithAltResourceName) GetContainerInfo(deviceIndex string, resourceName string) *stores.ContainerInfo {
+func (m mockPodResourcesStoreWithAltResourceName) GetContainerInfo(_ string, resourceName string) *stores.ContainerInfo {
 	if resourceName == neuronDeviceResourceNameAlt {
 		return &stores.ContainerInfo{
 			PodName:       dummyPodNameForAltResource,
@@ -151,7 +151,7 @@ func TestConsumeMetricsForPodAttributeDecorator(t *testing.T) {
 		},
 	}
 
-	decoratorconsumer.RunDecoratorTestScenarios(t, dc, ctx, testcases1)
+	decoratorconsumer.RunDecoratorTestScenarios(ctx, t, dc, testcases1)
 
 	dc = &PodAttributesDecoratorConsumer{
 		NextConsumer:      consumertest.NewNop(),
@@ -186,5 +186,5 @@ func TestConsumeMetricsForPodAttributeDecorator(t *testing.T) {
 		},
 	}
 
-	decoratorconsumer.RunDecoratorTestScenarios(t, dc, ctx, testcases2)
+	decoratorconsumer.RunDecoratorTestScenarios(ctx, t, dc, testcases2)
 }

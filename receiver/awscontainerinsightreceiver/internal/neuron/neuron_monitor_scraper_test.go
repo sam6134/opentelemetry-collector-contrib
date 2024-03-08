@@ -5,6 +5,7 @@ package neuron
 
 import (
 	"context"
+	"os"
 	"strings"
 	"testing"
 
@@ -29,10 +30,14 @@ neuroncore_utilization_ratio{availability_zone="us-east-1c",instance_id="i-09db9
 # HELP system_memory_total_bytes System memory total_bytes bytes
 # TYPE system_memory_total_bytes gauge
 system_memory_total_bytes{availability_zone="us-east-1c",instance_id="i-09db9b55e0095612f",instance_name="",instance_type="trn1n.32xlarge",region="us-east-1",subnet_id="subnet-06a7754948e8a000f"} 5.32523487232e+011
+# HELP neurondevice_hw_ecc_events_total_mem_ecc_corrected Neuron hardware errors
+# TYPE neurondevice_hw_ecc_events_total_mem_ecc_corrected gauge
+neurondevice_hw_ecc_events_total_mem_ecc_corrected{availability_zone="us-east-1c",instance_id="i-09db9b55e0095612f",instance_name="",instance_type="trn1n.32xlarge",neuron_device_index="5",region="us-east-1",runtime_tag="367",subnet_id="subnet-06a7754948e8a000f"} 3
 `
 
 const dummyClusterName = "cluster-name"
 const dummyHostName = "i-000000000"
+const dummyNodeName = "dummy-nodeName"
 
 type mockHostInfoProvider struct {
 }
@@ -46,13 +51,24 @@ func (m mockHostInfoProvider) GetInstanceID() string {
 }
 
 func TestNewNeuronScraperEndToEnd(t *testing.T) {
+	os.Setenv("K8S_NODE_NAME", dummyNodeName)
 	expectedMetrics := make(map[string]prometheusscraper.ExpectedMetricStruct)
 	expectedMetrics["neuroncore_utilization_ratio"] = prometheusscraper.ExpectedMetricStruct{
 		MetricValue: 0.1,
 		MetricLabels: []prometheusscraper.MetricLabel{
 			{LabelName: "InstanceId", LabelValue: "i-09db9b55e0095612f"},
 			{LabelName: "ClusterName", LabelValue: dummyClusterName},
-			{LabelName: "DeviceId", LabelValue: "0"},
+			{LabelName: "NeuronCore", LabelValue: "0"},
+			{LabelName: "NodeName", LabelValue: dummyNodeName},
+		},
+	}
+	expectedMetrics["neurondevice_hw_ecc_events_total_mem_ecc_corrected"] = prometheusscraper.ExpectedMetricStruct{
+		MetricValue: 3,
+		MetricLabels: []prometheusscraper.MetricLabel{
+			{LabelName: "InstanceId", LabelValue: "i-09db9b55e0095612f"},
+			{LabelName: "ClusterName", LabelValue: dummyClusterName},
+			{LabelName: "NeuronDevice", LabelValue: "5"},
+			{LabelName: "NodeName", LabelValue: dummyNodeName},
 		},
 	}
 	expectedMetrics["neuron_runtime_memory_used_bytes"] = prometheusscraper.ExpectedMetricStruct{
@@ -60,6 +76,7 @@ func TestNewNeuronScraperEndToEnd(t *testing.T) {
 		MetricLabels: []prometheusscraper.MetricLabel{
 			{LabelName: "InstanceId", LabelValue: "i-09db9b55e0095612f"},
 			{LabelName: "ClusterName", LabelValue: dummyClusterName},
+			{LabelName: "NodeName", LabelValue: dummyNodeName},
 		},
 	}
 
@@ -68,6 +85,7 @@ func TestNewNeuronScraperEndToEnd(t *testing.T) {
 		MetricLabels: []prometheusscraper.MetricLabel{
 			{LabelName: "InstanceId", LabelValue: "i-09db9b55e0095612f"},
 			{LabelName: "ClusterName", LabelValue: dummyClusterName},
+			{LabelName: "NodeName", LabelValue: dummyNodeName},
 		},
 	}
 
@@ -76,6 +94,7 @@ func TestNewNeuronScraperEndToEnd(t *testing.T) {
 		MetricLabels: []prometheusscraper.MetricLabel{
 			{LabelName: "InstanceId", LabelValue: "i-09db9b55e0095612f"},
 			{LabelName: "ClusterName", LabelValue: dummyClusterName},
+			{LabelName: "NodeName", LabelValue: dummyNodeName},
 		},
 	}
 

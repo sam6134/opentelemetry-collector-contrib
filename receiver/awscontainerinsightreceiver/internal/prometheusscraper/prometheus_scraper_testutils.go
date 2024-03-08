@@ -60,7 +60,6 @@ func (m MockConsumer) ConsumeMetrics(_ context.Context, md pmetric.Metrics) erro
 	scopeMetrics := md.ResourceMetrics().At(0).ScopeMetrics().At(0).Metrics()
 	for i := 0; i < scopeMetrics.Len(); i++ {
 		metric := scopeMetrics.At(i)
-		fmt.Println(metric.Name())
 		metricsStruct, ok := m.ExpectedMetrics[metric.Name()]
 		if ok {
 			assert.Equal(m.T, metricsStruct.MetricValue, metric.Gauge().DataPoints().At(0).DoubleValue())
@@ -69,7 +68,7 @@ func (m MockConsumer) ConsumeMetrics(_ context.Context, md pmetric.Metrics) erro
 				assert.True(m.T, isFound)
 				assert.Equal(m.T, expectedLabel.LabelValue, labelValue.Str())
 			}
-			metricFoundCount += 1
+			metricFoundCount++
 		}
 	}
 

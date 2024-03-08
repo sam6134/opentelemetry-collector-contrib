@@ -25,7 +25,7 @@ type TestCase struct {
 	ShouldError bool
 }
 
-func RunDecoratorTestScenarios(t *testing.T, dc consumer.Metrics, ctx context.Context, testcases map[string]TestCase) {
+func RunDecoratorTestScenarios(ctx context.Context, t *testing.T, dc consumer.Metrics, testcases map[string]TestCase) {
 	for _, tc := range testcases {
 		err := dc.ConsumeMetrics(ctx, tc.Metrics)
 		if tc.ShouldError {
@@ -88,7 +88,6 @@ func GenerateMetrics(nameToDimsGauge map[MetricIdentifier]map[string]string) pme
 func getAttributesFromMetric(m *pmetric.Metric) pcommon.Map {
 	if m.Type() == pmetric.MetricTypeGauge {
 		return m.Gauge().DataPoints().At(0).Attributes()
-	} else {
-		return m.Sum().DataPoints().At(0).Attributes()
 	}
+	return m.Sum().DataPoints().At(0).Attributes()
 }

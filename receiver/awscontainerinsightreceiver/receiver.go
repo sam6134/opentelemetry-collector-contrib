@@ -291,7 +291,7 @@ func (acir *awsContainerInsightReceiver) Shutdown(context.Context) error {
 	}
 
 	if acir.k8sDecorator != nil {
-		acir.k8sDecorator.Shutdown()
+		errs = errors.Join(errs, acir.k8sDecorator.Shutdown())
 	}
 
 	if acir.podResourcesStore != nil {

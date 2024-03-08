@@ -142,5 +142,5 @@ func TestConsumeMetrics(t *testing.T) {
 		},
 	}
 
-	RunDecoratorTestScenarios(t, dc, ctx, testcases)
+	RunDecoratorTestScenarios(ctx, t, dc, testcases)
 }

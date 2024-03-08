@@ -4,6 +4,7 @@
 package neuron // import "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awscontainerinsightreceiver/internal/neuron"
 
 import (
+	"os"
 	"time"
 
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awscontainerinsightreceiver/internal/prometheusscraper"
@@ -12,12 +13,15 @@ import (
 	"github.com/prometheus/prometheus/discovery"
 	"github.com/prometheus/prometheus/discovery/kubernetes"
 	"github.com/prometheus/prometheus/model/relabel"
+
+	ci "github.com/open-telemetry/opentelemetry-collector-contrib/internal/aws/containerinsight"
 )
 
 const (
-	caFile             = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
-	collectionInterval = 60 * time.Second
-	jobName            = "containerInsightsNeuronMonitorScraper"
+	collectionInterval        = 60 * time.Second
+	jobName                   = "containerInsightsNeuronMonitorScraper"
+	scraperMetricsPath        = "/metrics"
+	scraperK8sServiceSelector = "k8s-app=neuron-monitor-service"
 )
 
 func GetNeuronScrapeConfig(hostinfo prometheusscraper.HostInfoProvider) *config.ScrapeConfig {
@@ -27,7 +31,7 @@ func GetNeuronScrapeConfig(hostinfo prometheusscraper.HostInfoProvider) *config.
 		ScrapeTimeout:  model.Duration(collectionInterval),
 		JobName:        jobName,
 		Scheme:         "http",
-		MetricsPath:    "/metrics",
+		MetricsPath:    scraperMetricsPath,
 		ServiceDiscoveryConfigs: discovery.Configs{
 			&kubernetes.SDConfig{
 				Role: kubernetes.RoleService,
@@ -37,7 +41,7 @@ func GetNeuronScrapeConfig(hostinfo prometheusscraper.HostInfoProvider) *config.
 				Selectors: []kubernetes.SelectorConfig{
 					{
 						Role:  kubernetes.RoleService,
-						Label: "k8s-app=neuron-monitor-service",
+						Label: scraperK8sServiceSelector,
 					},
 				},
 			},
@@ -56,14 +60,28 @@ func GetNeuronMetricRelabelConfigs(hostinfo prometheusscraper.HostInfoProvider) 
 		},
 		{
 			SourceLabels: model.LabelNames{"instance_id"},
-			TargetLabel:  "InstanceId",
+			TargetLabel:  ci.InstanceID,
+			Regex:        relabel.MustNewRegexp("(.*)"),
+			Replacement:  "${1}",
+			Action:       relabel.Replace,
+		},
+		{
+			SourceLabels: model.LabelNames{"instance_type"},
+			TargetLabel:  ci.InstanceType,
 			Regex:        relabel.MustNewRegexp("(.*)"),
 			Replacement:  "${1}",
 			Action:       relabel.Replace,
 		},
 		{
 			SourceLabels: model.LabelNames{"neuroncore"},
-			TargetLabel:  "DeviceId",
+			TargetLabel:  "NeuronCore",
+			Regex:        relabel.MustNewRegexp("(.*)"),
+			Replacement:  "${1}",
+			Action:       relabel.Replace,
+		},
+		{
+			SourceLabels: model.LabelNames{"neuron_device_index"},
+			TargetLabel:  "NeuronDevice",
 			Regex:        relabel.MustNewRegexp("(.*)"),
 			Replacement:  "${1}",
 			Action:       relabel.Replace,
@@ -72,9 +90,16 @@ func GetNeuronMetricRelabelConfigs(hostinfo prometheusscraper.HostInfoProvider) 
 		// relabel looks up an existing label then creates another label with given key (TargetLabel) and value (static)
 		{
 			SourceLabels: model.LabelNames{"instance_id"},
-			TargetLabel:  "ClusterName",
+			TargetLabel:  ci.ClusterNameKey,
 			Regex:        relabel.MustNewRegexp("(.*)"),
 			Replacement:  hostinfo.GetClusterName(),
+			Action:       relabel.Replace,
+		},
+		{
+			SourceLabels: model.LabelNames{"instance_id"},
+			TargetLabel:  ci.NodeNameKey,
+			Regex:        relabel.MustNewRegexp("(.*)"),
+			Replacement:  os.Getenv("K8S_NODE_NAME"),
 			Action:       relabel.Replace,
 		},
 	}
