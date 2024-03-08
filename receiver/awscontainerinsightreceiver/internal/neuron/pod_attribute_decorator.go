@@ -1,4 +1,4 @@
-package neuron
+package neuron // import "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awscontainerinsightreceiver/internal/neuron"
 
 import (
 	"context"
@@ -52,18 +52,9 @@ func (pdc *PodAttributesDecoratorConsumer) neuronMetricsProcess(md pmetric.Metri
 			ils := ilms.At(j)
 			metrics := ils.Metrics()
 
-			neuronHardwareInfo := pmetric.Metric{}
-			neuronHardwareInfoFound := false
-			for k := 0; k < metrics.Len(); k++ {
-				m := metrics.At(k)
-				if m.Name() == neuronHardwareInfoKey {
-					neuronHardwareInfo = m
-					neuronHardwareInfoFound = true
-					break
-				}
-			}
+			neuronHardwareInfo, neuronHardwareInfoFound := findNeuronHardwareInfo(metrics)
 			if neuronHardwareInfoFound {
-				neuronCoresPerDevice := getNueronCoresPerDevice(neuronHardwareInfo)
+				neuronCoresPerDevice := getNeuronCoresPerDevice(neuronHardwareInfo)
 				for k := 0; k < metrics.Len(); k++ {
 					m := metrics.At(k)
 					pdc.addPodCorrelationAttributes(getMetricDatapoints(m), neuronCoresPerDevice)
@@ -71,6 +62,20 @@ func (pdc *PodAttributesDecoratorConsumer) neuronMetricsProcess(md pmetric.Metri
 			}
 		}
 	}
+}
+
+func findNeuronHardwareInfo(metrics pmetric.MetricSlice) (pmetric.Metric, bool) {
+	var neuronHardwareInfo pmetric.Metric
+	neuronHardwareInfoFound := false
+	for k := 0; k < metrics.Len(); k++ {
+		m := metrics.At(k)
+		if m.Name() == neuronHardwareInfoKey {
+			neuronHardwareInfo = m
+			neuronHardwareInfoFound = true
+			break
+		}
+	}
+	return neuronHardwareInfo, neuronHardwareInfoFound
 }
 
 func (pdc *PodAttributesDecoratorConsumer) addPodCorrelationAttributes(metricDatapoints pmetric.NumberDataPointSlice, neuronCoresPerDevice int) {
@@ -110,7 +115,6 @@ func populateAttributes(attributes *pcommon.Map, containerInfo *stores.Container
 	if containerInfo != nil {
 		attributes.PutStr(ci.AttributeContainerName, containerInfo.ContainerName)
 		attributes.PutStr(ci.AttributeK8sPodName, containerInfo.PodName)
-		attributes.PutStr(ci.AttributePodName, containerInfo.PodName)
 		attributes.PutStr(ci.AttributeK8sNamespace, containerInfo.Namespace)
 	}
 }
@@ -127,15 +131,15 @@ func getMetricDatapoints(m pmetric.Metric) pmetric.NumberDataPointSlice {
 }
 
 // We extract the attribute named `neuroncore_per_device_count` from the metric to get the value
-// https://awsdocs-neuron.readthedocs-hosted.com/en/latest/tools/neuron-sys-tools/neuron-monitor-user-guide
-func getNueronCoresPerDevice(neuronHardwareInfo pmetric.Metric) int {
+// https://awsdocs-neuron.readthedocs-hosted.com/en/latest/tools/neuron-sys-tools/neuron-monitor-user-guide.html
+func getNeuronCoresPerDevice(neuronHardwareInfo pmetric.Metric) int {
 	neuronCoresPerDeviceValue, _ := neuronHardwareInfo.Sum().DataPoints().At(0).Attributes().Get(neuronCorePerDeviceKey)
 	neuronCoresPerDevice, _ := strconv.Atoi(neuronCoresPerDeviceValue.AsString())
 	return neuronCoresPerDevice
 }
 
 // To get the device index from core index we divide the index by cores in a single device
-// https://awsdocs-neuron.readthedocs-hosted.com/en/latest/tools/neuron-sys-tools/neuron-monitor-user-guide
+// https://awsdocs-neuron.readthedocs-hosted.com/en/latest/tools/neuron-sys-tools/neuron-monitor-user-guide.html
 func getNeuronDeviceIndexFromCoreAttribute(neuronCoreIndex pcommon.Value, neuronCoresPerDevice int) string {
 	neuronCoreIndexIntVal, _ := strconv.Atoi(neuronCoreIndex.AsString())
 	return strconv.Itoa(neuronCoreIndexIntVal / neuronCoresPerDevice)

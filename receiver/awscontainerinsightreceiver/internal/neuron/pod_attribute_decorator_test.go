@@ -16,6 +16,7 @@ import (
 )
 
 var dummyPodName = "pod-name"
+var dummyPodNameForAltResource = "pod-name-alt"
 var dummyContainerName = "container-name"
 var dummyNamespace = "namespace"
 
@@ -30,6 +31,20 @@ func (m mockPodResourcesStore) GetContainerInfo(deviceIndex string, resourceName
 	}
 }
 
+type mockPodResourcesStoreWithAltResourceName struct {
+}
+
+func (m mockPodResourcesStoreWithAltResourceName) GetContainerInfo(deviceIndex string, resourceName string) *stores.ContainerInfo {
+	if resourceName == neuronDeviceResourceNameAlt {
+		return &stores.ContainerInfo{
+			PodName:       dummyPodNameForAltResource,
+			ContainerName: dummyContainerName,
+			Namespace:     dummyNamespace,
+		}
+	}
+	return nil
+}
+
 func TestConsumeMetricsForPodAttributeDecorator(t *testing.T) {
 	logger, _ := zap.NewDevelopment()
 	dc := &PodAttributesDecoratorConsumer{
@@ -39,7 +54,7 @@ func TestConsumeMetricsForPodAttributeDecorator(t *testing.T) {
 	}
 	ctx := context.Background()
 
-	testcases := map[string]decoratorconsumer.TestCase{
+	testcases1 := map[string]decoratorconsumer.TestCase{
 		"empty": {
 			Metrics:     pmetric.NewMetrics(),
 			Want:        pmetric.NewMetrics(),
@@ -78,7 +93,6 @@ func TestConsumeMetricsForPodAttributeDecorator(t *testing.T) {
 					neuronDeviceAttributeKey:  "1",
 					ci.AttributeContainerName: dummyContainerName,
 					ci.AttributeK8sPodName:    dummyPodName,
-					ci.AttributePodName:       dummyPodName,
 					ci.AttributeK8sNamespace:  dummyNamespace,
 				},
 			}),
@@ -104,7 +118,32 @@ func TestConsumeMetricsForPodAttributeDecorator(t *testing.T) {
 					neuronDeviceAttributeKey:  "5",
 					ci.AttributeContainerName: dummyContainerName,
 					ci.AttributeK8sPodName:    dummyPodName,
-					ci.AttributePodName:       dummyPodName,
+					ci.AttributeK8sNamespace:  dummyNamespace,
+				},
+			}),
+			ShouldError: false,
+		},
+		"correlation_when_both_present": {
+			Metrics: decoratorconsumer.GenerateMetrics(map[decoratorconsumer.MetricIdentifier]map[string]string{
+				{Name: neuronHardwareInfoKey, MetricType: pmetric.MetricTypeSum}: {
+					neuronCorePerDeviceKey: "2",
+				},
+				{Name: "test", MetricType: pmetric.MetricTypeGauge}: {
+					"device":                 "test0",
+					neuronDeviceAttributeKey: "5",
+					neuronCoreAttributeKey:   "10",
+				},
+			}),
+			Want: decoratorconsumer.GenerateMetrics(map[decoratorconsumer.MetricIdentifier]map[string]string{
+				{Name: neuronHardwareInfoKey, MetricType: pmetric.MetricTypeSum}: {
+					neuronCorePerDeviceKey: "2",
+				},
+				{Name: "test", MetricType: pmetric.MetricTypeGauge}: {
+					"device":                  "test0",
+					neuronCoreAttributeKey:    "10",
+					neuronDeviceAttributeKey:  "5",
+					ci.AttributeContainerName: dummyContainerName,
+					ci.AttributeK8sPodName:    dummyPodName,
 					ci.AttributeK8sNamespace:  dummyNamespace,
 				},
 			}),
@@ -112,5 +151,40 @@ func TestConsumeMetricsForPodAttributeDecorator(t *testing.T) {
 		},
 	}
 
-	decoratorconsumer.RunDecoratorTestScenarios(t, dc, ctx, testcases)
+	decoratorconsumer.RunDecoratorTestScenarios(t, dc, ctx, testcases1)
+
+	dc = &PodAttributesDecoratorConsumer{
+		NextConsumer:      consumertest.NewNop(),
+		PodResourcesStore: mockPodResourcesStoreWithAltResourceName{},
+		Logger:            logger,
+	}
+
+	testcases2 := map[string]decoratorconsumer.TestCase{
+		"correlation_via_neuron_device_index_alt_name": {
+			Metrics: decoratorconsumer.GenerateMetrics(map[decoratorconsumer.MetricIdentifier]map[string]string{
+				{Name: neuronHardwareInfoKey, MetricType: pmetric.MetricTypeSum}: {
+					neuronCorePerDeviceKey: "2",
+				},
+				{Name: "test", MetricType: pmetric.MetricTypeGauge}: {
+					"device":                 "test0",
+					neuronDeviceAttributeKey: "1",
+				},
+			}),
+			Want: decoratorconsumer.GenerateMetrics(map[decoratorconsumer.MetricIdentifier]map[string]string{
+				{Name: neuronHardwareInfoKey, MetricType: pmetric.MetricTypeSum}: {
+					neuronCorePerDeviceKey: "2",
+				},
+				{Name: "test", MetricType: pmetric.MetricTypeGauge}: {
+					"device":                  "test0",
+					neuronDeviceAttributeKey:  "1",
+					ci.AttributeContainerName: dummyContainerName,
+					ci.AttributeK8sPodName:    dummyPodNameForAltResource,
+					ci.AttributeK8sNamespace:  dummyNamespace,
+				},
+			}),
+			ShouldError: false,
+		},
+	}
+
+	decoratorconsumer.RunDecoratorTestScenarios(t, dc, ctx, testcases2)
 }

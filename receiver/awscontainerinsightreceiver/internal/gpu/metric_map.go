@@ -1,4 +1,7 @@
-package gpu
+// Copyright The OpenTelemetry Authors
+// SPDX-License-Identifier: Apache-2.0
+
+package gpu // import "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awscontainerinsightreceiver/internal/gpu"
 
 const (
 	gpuUtil        = "DCGM_FI_DEV_GPU_UTIL"
