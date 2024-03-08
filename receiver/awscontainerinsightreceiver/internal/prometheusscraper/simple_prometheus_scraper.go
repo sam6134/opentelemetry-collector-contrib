@@ -23,6 +23,7 @@ type SimplePrometheusScraper struct {
 	host               component.Host
 	HostInfoProvider   HostInfoProvider
 	PrometheusReceiver receiver.Metrics
+	ScraperConfigs     *config.ScrapeConfig
 	running            bool
 }
 
@@ -73,6 +74,7 @@ func NewSimplePrometheusScraper(opts SimplePrometheusScraperOpts) (*SimplePromet
 		Settings:           opts.TelemetrySettings,
 		host:               opts.Host,
 		HostInfoProvider:   opts.HostInfoProvider,
+		ScraperConfigs:     opts.ScraperConfigs,
 		PrometheusReceiver: promReceiver,
 	}, nil
 }

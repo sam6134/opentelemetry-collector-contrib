@@ -161,7 +161,7 @@ func TestNewDcgmScraperEndToEnd(t *testing.T) {
 	mp, cfg, err := mocks.SetupMockPrometheus(targets...)
 	assert.NoError(t, err)
 
-	scrapeConfig := GetScraperConfig(scraper.HostInfoProvider)
+	scrapeConfig := scraper.ScraperConfigs
 	scrapeConfig.ScrapeInterval = cfg.ScrapeConfigs[0].ScrapeInterval
 	scrapeConfig.ScrapeTimeout = cfg.ScrapeConfigs[0].ScrapeInterval
 	scrapeConfig.Scheme = "http"
