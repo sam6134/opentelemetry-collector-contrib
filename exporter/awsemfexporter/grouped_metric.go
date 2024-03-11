@@ -48,7 +48,6 @@ func addToGroupedMetric(pmd pmetric.Metric, groupedMetrics map[any]*groupedMetri
 		metrics.WriteString("groupedMetrics exec latency: {")
 		metrics.WriteString(fmt.Sprintf("\n\tName : %s", pmd.Name()))
 		metrics.WriteString(fmt.Sprintf("\n\tTimestamp : %s", pmd.Sum().DataPoints().At(0).Timestamp()))
-		metrics.WriteString(fmt.Sprintf("\n\tAggregation temporality: %s", pmd.Sum().AggregationTemporality().String()))
 		metrics.WriteString(fmt.Sprintf("\n\tDatapoint Attributes: %v", pmd.Sum().DataPoints().At(0).Attributes().AsRaw()))
 		metrics.WriteString(fmt.Sprintf("\n\tDatapoint double value: %v", pmd.Sum().DataPoints().At(0).DoubleValue()))
 		metrics.WriteString(fmt.Sprintf("\n\tDatapoint int value: %v", pmd.Sum().DataPoints().At(0).IntValue()))
