@@ -40,6 +40,7 @@ func addToGroupedMetric(pmd pmetric.Metric, groupedMetrics map[any]*groupedMetri
 		metrics.WriteString(fmt.Sprintf("\n\tDatapoint int value: %v", pmd.Sum().DataPoints().At(0).IntValue()))
 		metrics.WriteString(fmt.Sprintf("\n\tDatapoints length: %v", pmd.Sum().DataPoints().At(0).IntValue()))
 		metrics.WriteString("}")
+		logger.Info(metrics.String())
 	}
 
 	if strings.Contains(pmd.Name(), "execution_latency") {
@@ -52,6 +53,7 @@ func addToGroupedMetric(pmd pmetric.Metric, groupedMetrics map[any]*groupedMetri
 		metrics.WriteString(fmt.Sprintf("\n\tDatapoint int value: %v", pmd.Gauge().DataPoints().At(0).IntValue()))
 		metrics.WriteString(fmt.Sprintf("\n\tDatapoints length: %v", pmd.Gauge().DataPoints().At(0).IntValue()))
 		metrics.WriteString("}")
+		logger.Info(metrics.String())
 	}
 	dps := getDataPoints(pmd, metadata, logger)
 	if dps == nil || dps.Len() == 0 {
