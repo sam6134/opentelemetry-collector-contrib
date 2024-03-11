@@ -47,11 +47,12 @@ func addToGroupedMetric(pmd pmetric.Metric, groupedMetrics map[any]*groupedMetri
 		var metrics strings.Builder
 		metrics.WriteString("groupedMetrics exec latency: {")
 		metrics.WriteString(fmt.Sprintf("\n\tName : %s", pmd.Name()))
-		metrics.WriteString(fmt.Sprintf("\n\tTimestamp : %s", pmd.Gauge().DataPoints().At(0).Timestamp()))
-		metrics.WriteString(fmt.Sprintf("\n\tDatapoint Attributes: %v", pmd.Gauge().DataPoints().At(0).Attributes().AsRaw()))
-		metrics.WriteString(fmt.Sprintf("\n\tDatapoint double value: %v", pmd.Gauge().DataPoints().At(0).DoubleValue()))
-		metrics.WriteString(fmt.Sprintf("\n\tDatapoint int value: %v", pmd.Gauge().DataPoints().At(0).IntValue()))
-		metrics.WriteString(fmt.Sprintf("\n\tDatapoints length: %v", pmd.Gauge().DataPoints().At(0).IntValue()))
+		metrics.WriteString(fmt.Sprintf("\n\tTimestamp : %s", pmd.Sum().DataPoints().At(0).Timestamp()))
+		metrics.WriteString(fmt.Sprintf("\n\tAggregation temporality: %s", pmd.Sum().AggregationTemporality().String()))
+		metrics.WriteString(fmt.Sprintf("\n\tDatapoint Attributes: %v", pmd.Sum().DataPoints().At(0).Attributes().AsRaw()))
+		metrics.WriteString(fmt.Sprintf("\n\tDatapoint double value: %v", pmd.Sum().DataPoints().At(0).DoubleValue()))
+		metrics.WriteString(fmt.Sprintf("\n\tDatapoint int value: %v", pmd.Sum().DataPoints().At(0).IntValue()))
+		metrics.WriteString(fmt.Sprintf("\n\tDatapoints length: %v", pmd.Sum().DataPoints().At(0).IntValue()))
 		metrics.WriteString("}")
 		logger.Info(metrics.String())
 	}
