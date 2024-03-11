@@ -29,32 +29,6 @@ type metricInfo struct {
 
 // addToGroupedMetric processes OT metrics and adds them into GroupedMetric buckets
 func addToGroupedMetric(pmd pmetric.Metric, groupedMetrics map[any]*groupedMetric, metadata cWMetricMetadata, patternReplaceSucceeded bool, logger *zap.Logger, descriptor map[string]MetricDescriptor, config *Config, calculators *emfCalculators) error {
-	if strings.Contains(pmd.Name(), "execution_status") {
-		var metrics strings.Builder
-		metrics.WriteString("groupedMetrics exec status: {")
-		metrics.WriteString(fmt.Sprintf("\n\tName : %s", pmd.Name()))
-		metrics.WriteString(fmt.Sprintf("\n\tTimestamp : %s", pmd.Sum().DataPoints().At(0).Timestamp()))
-		metrics.WriteString(fmt.Sprintf("\n\tAggregation temporality: %s", pmd.Sum().AggregationTemporality().String()))
-		metrics.WriteString(fmt.Sprintf("\n\tDatapoint Attributes: %v", pmd.Sum().DataPoints().At(0).Attributes().AsRaw()))
-		metrics.WriteString(fmt.Sprintf("\n\tDatapoint double value: %v", pmd.Sum().DataPoints().At(0).DoubleValue()))
-		metrics.WriteString(fmt.Sprintf("\n\tDatapoint int value: %v", pmd.Sum().DataPoints().At(0).IntValue()))
-		metrics.WriteString(fmt.Sprintf("\n\tDatapoints length: %v", pmd.Sum().DataPoints().At(0).IntValue()))
-		metrics.WriteString("}")
-		logger.Info(metrics.String())
-	}
-
-	if strings.Contains(pmd.Name(), "execution_latency") {
-		var metrics strings.Builder
-		metrics.WriteString("groupedMetrics exec latency: {")
-		metrics.WriteString(fmt.Sprintf("\n\tName : %s", pmd.Name()))
-		metrics.WriteString(fmt.Sprintf("\n\tTimestamp : %s", pmd.Sum().DataPoints().At(0).Timestamp()))
-		metrics.WriteString(fmt.Sprintf("\n\tDatapoint Attributes: %v", pmd.Sum().DataPoints().At(0).Attributes().AsRaw()))
-		metrics.WriteString(fmt.Sprintf("\n\tDatapoint double value: %v", pmd.Sum().DataPoints().At(0).DoubleValue()))
-		metrics.WriteString(fmt.Sprintf("\n\tDatapoint int value: %v", pmd.Sum().DataPoints().At(0).IntValue()))
-		metrics.WriteString(fmt.Sprintf("\n\tDatapoints length: %v", pmd.Sum().DataPoints().At(0).IntValue()))
-		metrics.WriteString("}")
-		logger.Info(metrics.String())
-	}
 	dps := getDataPoints(pmd, metadata, logger)
 	if dps == nil || dps.Len() == 0 {
 		return nil
