@@ -104,6 +104,17 @@ func addToGroupedMetric(pmd pmetric.Metric, groupedMetrics map[any]*groupedMetri
 				metadata.timestampMs = dp.timestampMs
 			}
 
+			if strings.Contains(dp.name, "execution_status") || strings.Contains(dp.name, "execution_latency") {
+				var metrics strings.Builder
+				metrics.WriteString(fmt.Sprintf("datapoint %s: {", dp.name))
+				metrics.WriteString(fmt.Sprintf("\n\tName : %s", dp.name))
+				metrics.WriteString(fmt.Sprintf("\n\tTimestamp : %d", dp.timestampMs))
+				metrics.WriteString(fmt.Sprintf("\n\tDatapoint Value: %v", dp.value))
+				metrics.WriteString(fmt.Sprintf("\n\tDatapoint Attributes: %v", dp.labels))
+				metrics.WriteString("}")
+				logger.Info(metrics.String())
+			}
+
 			// Extra params to use when grouping metrics
 			groupKey := aws.NewKey(metadata.groupedMetricMetadata, labels)
 			if _, ok := groupedMetrics[groupKey]; ok {
