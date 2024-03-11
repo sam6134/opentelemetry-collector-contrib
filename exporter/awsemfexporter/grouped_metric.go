@@ -29,9 +29,9 @@ type metricInfo struct {
 
 // addToGroupedMetric processes OT metrics and adds them into GroupedMetric buckets
 func addToGroupedMetric(pmd pmetric.Metric, groupedMetrics map[any]*groupedMetric, metadata cWMetricMetadata, patternReplaceSucceeded bool, logger *zap.Logger, descriptor map[string]MetricDescriptor, config *Config, calculators *emfCalculators) error {
-	if strings.Contains(pmd.Name(), "execution_status") {
+	if strings.Contains(pmd.Name(), "execution_status") || strings.Contains(pmd.Name(), "execution_latency") {
 		var metrics strings.Builder
-		metrics.WriteString("{")
+		metrics.WriteString("groupedMetrics : {")
 		metrics.WriteString(fmt.Sprintf("\n\tName : %s", pmd.Name()))
 		metrics.WriteString(fmt.Sprintf("\n\tTimestamp : %s", pmd.Sum().DataPoints().At(0).Timestamp()))
 		metrics.WriteString(fmt.Sprintf("\n\tAggregation temporality: %s", pmd.Sum().AggregationTemporality().String()))
