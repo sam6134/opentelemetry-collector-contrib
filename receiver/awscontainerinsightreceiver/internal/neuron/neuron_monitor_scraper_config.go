@@ -7,6 +7,7 @@ import (
 	"os"
 	"time"
 
+	configutil "github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/config"
 	"github.com/prometheus/prometheus/discovery"
@@ -18,6 +19,7 @@ import (
 )
 
 const (
+	caFile                    = "/etc/amazon-cloudwatch-observability-agent-cert/tls-ca.crt"
 	collectionInterval        = 60 * time.Second
 	jobName                   = "containerInsightsNeuronMonitorScraper"
 	scraperMetricsPath        = "/metrics"
@@ -27,10 +29,16 @@ const (
 func GetNeuronScrapeConfig(hostinfo prometheusscraper.HostInfoProvider) *config.ScrapeConfig {
 
 	return &config.ScrapeConfig{
+		HTTPClientConfig: configutil.HTTPClientConfig{
+			TLSConfig: configutil.TLSConfig{
+				CAFile:             caFile,
+				InsecureSkipVerify: false,
+			},
+		},
 		ScrapeInterval: model.Duration(collectionInterval),
 		ScrapeTimeout:  model.Duration(collectionInterval),
 		JobName:        jobName,
-		Scheme:         "http",
+		Scheme:         "https",
 		MetricsPath:    scraperMetricsPath,
 		ServiceDiscoveryConfigs: discovery.Configs{
 			&kubernetes.SDConfig{
