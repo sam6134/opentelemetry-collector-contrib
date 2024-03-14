@@ -5,7 +5,6 @@ package neuron
 
 import (
 	"context"
-	"os"
 	"strings"
 	"testing"
 
@@ -51,7 +50,7 @@ func (m mockHostInfoProvider) GetInstanceID() string {
 }
 
 func TestNewNeuronScraperEndToEnd(t *testing.T) {
-	os.Setenv("K8S_NODE_NAME", dummyNodeName)
+	t.Setenv("HOST_NAME", dummyNodeName)
 	expectedMetrics := make(map[string]prometheusscraper.ExpectedMetricStruct)
 	expectedMetrics["neuroncore_utilization_ratio"] = prometheusscraper.ExpectedMetricStruct{
 		MetricValue: 0.1,
