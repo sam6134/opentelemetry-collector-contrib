@@ -104,6 +104,8 @@ func newEmfExporter(config *Config, set exporter.CreateSettings) (*emfExporter, 
 }
 
 func (emf *emfExporter) pushMetricsData(_ context.Context, md pmetric.Metrics) error {
+	emf.logMd(md, "NEURON_PROM_METRICS_BEFORE_EMF_CONVERSION")
+
 	rms := md.ResourceMetrics()
 	labels := map[string]string{}
 	for i := 0; i < rms.Len(); i++ {
@@ -131,6 +133,12 @@ func (emf *emfExporter) pushMetricsData(_ context.Context, md pmetric.Metrics) e
 	}
 
 	for _, groupedMetric := range groupedMetrics {
+		for key, _ := range groupedMetric.metrics {
+			if strings.Contains(key, "NeuronCore") || strings.Contains(key, "Neuroncore") || strings.Contains(key, "neuronCore") || strings.Contains(key, "neuroncore") {
+				emf.config.logger.Info("NEURON_GROUPED_METRIC : " + key)
+			}
+		}
+
 		putLogEvent, err := translateGroupedMetricToEmf(groupedMetric, emf.config, defaultLogStream)
 		if err != nil {
 			if errors.Is(err, errMissingMetricsForEnhancedContainerInsights) {
@@ -145,6 +153,9 @@ func (emf *emfExporter) pushMetricsData(_ context.Context, md pmetric.Metrics) e
 			if putLogEvent != nil &&
 				putLogEvent.InputLogEvent != nil &&
 				putLogEvent.InputLogEvent.Message != nil {
+				if strings.Contains(*putLogEvent.InputLogEvent.Message, "NeuronCore") || strings.Contains(*putLogEvent.InputLogEvent.Message, "Neuroncore") || strings.Contains(*putLogEvent.InputLogEvent.Message, "neuronCore") || strings.Contains(*putLogEvent.InputLogEvent.Message, "neuroncore") {
+					emf.config.logger.Info("NEURON_EMF_LOG : " + *putLogEvent.InputLogEvent.Message)
+				}
 				fmt.Println(*putLogEvent.InputLogEvent.Message)
 			}
 		} else if strings.EqualFold(outputDestination, outputDestinationCloudWatch) {
@@ -224,4 +235,60 @@ func wrapErrorIfBadRequest(err error) error {
 		return consumererror.NewPermanent(err)
 	}
 	return err
+}
+
+func (d *emfExporter) logMd(md pmetric.Metrics, name string) {
+	var logMessage strings.Builder
+	isNeuronMetric := false
+	logMessage.WriteString(fmt.Sprintf("\"%s_METRICS_MD\" : {\n", name))
+	rms := md.ResourceMetrics()
+	for i := 0; i < rms.Len(); i++ {
+		rs := rms.At(i)
+		ilms := rs.ScopeMetrics()
+		logMessage.WriteString(fmt.Sprintf("\t\"ResourceMetric_%d\": {\n", i))
+		for j := 0; j < ilms.Len(); j++ {
+			ils := ilms.At(j)
+			metrics := ils.Metrics()
+			logMessage.WriteString(fmt.Sprintf("\t\t\"ScopeMetric_%d\": {\n", j))
+			logMessage.WriteString(fmt.Sprintf("\t\t\"Metrics_%d\": [\n", j))
+
+			for k := 0; k < metrics.Len(); k++ {
+				m := metrics.At(k)
+				logMessage.WriteString(fmt.Sprintf("\t\t\t\"Metric_%d\": {\n", k))
+				logMessage.WriteString(fmt.Sprintf("\t\t\t\t\"name\": \"%s\",\n", m.Name()))
+
+				if strings.Contains(m.Name(), "neuron") || strings.Contains(m.Name(), "Neuron") {
+					isNeuronMetric = true
+				}
+
+				var datapoints pmetric.NumberDataPointSlice
+				switch m.Type() {
+				case pmetric.MetricTypeGauge:
+					datapoints = m.Gauge().DataPoints()
+				case pmetric.MetricTypeSum:
+					datapoints = m.Sum().DataPoints()
+				default:
+					datapoints = pmetric.NewNumberDataPointSlice()
+				}
+
+				logMessage.WriteString("\t\t\t\t\"datapoints\": [\n")
+				for yu := 0; yu < datapoints.Len(); yu++ {
+					logMessage.WriteString("\t\t\t\t\t{\n")
+					logMessage.WriteString(fmt.Sprintf("\t\t\t\t\t\t\"attributes\": \"%v\",\n", datapoints.At(yu).Attributes().AsRaw()))
+					logMessage.WriteString(fmt.Sprintf("\t\t\t\t\t\t\"value\": %v,\n", datapoints.At(yu).DoubleValue()))
+					logMessage.WriteString("\t\t\t\t\t},\n")
+				}
+				logMessage.WriteString("\t\t\t\t],\n")
+				logMessage.WriteString("\t\t\t},\n")
+			}
+			logMessage.WriteString("\t\t],\n")
+			logMessage.WriteString("\t\t},\n")
+		}
+		logMessage.WriteString("\t},\n")
+	}
+	logMessage.WriteString("},\n")
+
+	if isNeuronMetric {
+		d.config.logger.Info(logMessage.String())
+	}
 }
