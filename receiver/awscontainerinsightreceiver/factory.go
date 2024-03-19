@@ -42,9 +42,6 @@ const (
 
 	// Don't enable EKS control plane metrics by default
 	defaultEnableControlPlaneMetrics = false
-
-	// Don't enable Neuron metrics by default
-	defaultEnableAwsNeuronMetrics = false
 )
 
 // NewFactory creates a factory for AWS container insight receiver
@@ -67,7 +64,6 @@ func createDefaultConfig() component.Config {
 		ClusterName:                 defaultClusterName,
 		LeaderLockName:              defaultLeaderLockName,
 		EnableControlPlaneMetrics:   defaultEnableControlPlaneMetrics,
-		EnableAwsNeuronMetrics:      defaultEnableAwsNeuronMetrics,
 	}
 }
 

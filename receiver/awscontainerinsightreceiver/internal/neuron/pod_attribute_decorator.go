@@ -57,10 +57,12 @@ func (pdc *PodAttributesDecoratorConsumer) neuronMetricsProcess(md pmetric.Metri
 
 			neuronHardwareInfo, neuronHardwareInfoFound := findNeuronHardwareInfo(metrics)
 			if neuronHardwareInfoFound {
-				neuronCoresPerDevice := getNeuronCoresPerDevice(neuronHardwareInfo)
-				for k := 0; k < metrics.Len(); k++ {
-					m := metrics.At(k)
-					pdc.addPodCorrelationAttributes(getMetricDatapoints(m), neuronCoresPerDevice)
+				neuronCoresPerDevice, extracted := getNeuronCoresPerDevice(neuronHardwareInfo)
+				if extracted {
+					for k := 0; k < metrics.Len(); k++ {
+						m := metrics.At(k)
+						pdc.addPodCorrelationAttributes(getMetricDatapoints(m), neuronCoresPerDevice)
+					}
 				}
 			}
 		}
@@ -135,10 +137,16 @@ func getMetricDatapoints(m pmetric.Metric) pmetric.NumberDataPointSlice {
 
 // We extract the attribute named `neuroncore_per_device_count` from the metric to get the value
 // https://awsdocs-neuron.readthedocs-hosted.com/en/latest/tools/neuron-sys-tools/neuron-monitor-user-guide.html
-func getNeuronCoresPerDevice(neuronHardwareInfo pmetric.Metric) int {
-	neuronCoresPerDeviceValue, _ := neuronHardwareInfo.Sum().DataPoints().At(0).Attributes().Get(neuronCorePerDeviceKey)
-	neuronCoresPerDevice, _ := strconv.Atoi(neuronCoresPerDeviceValue.AsString())
-	return neuronCoresPerDevice
+func getNeuronCoresPerDevice(neuronHardwareInfo pmetric.Metric) (int, bool) {
+	neuronCoreHardwareInfoDatapoints := neuronHardwareInfo.Sum().DataPoints()
+	if neuronCoreHardwareInfoDatapoints.Len() > 0 {
+		neuronCoresPerDeviceValue, found := neuronCoreHardwareInfoDatapoints.At(0).Attributes().Get(neuronCorePerDeviceKey)
+		if found {
+			neuronCoresPerDevice, _ := strconv.Atoi(neuronCoresPerDeviceValue.AsString())
+			return neuronCoresPerDevice, true
+		}
+	}
+	return -1, false
 }
 
 // To get the device index from core index we divide the index by cores in a single device

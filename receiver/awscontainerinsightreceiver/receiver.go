@@ -224,7 +224,7 @@ func (acir *awsContainerInsightReceiver) initDcgmScraper(ctx context.Context, ho
 }
 
 func (acir *awsContainerInsightReceiver) initNeuronScraper(ctx context.Context, host component.Host, hostinfo *hostInfo.Info, decorator *stores.K8sDecorator) error {
-	if !acir.config.EnableAwsNeuronMetrics {
+	if !acir.config.EnableAcceleratedComputeMetrics {
 		return nil
 	}
 
