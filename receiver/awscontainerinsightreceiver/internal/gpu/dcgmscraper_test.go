@@ -22,6 +22,7 @@ import (
 	ci "github.com/open-telemetry/opentelemetry-collector-contrib/internal/aws/containerinsight"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awscontainerinsightreceiver/internal/mocks"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awscontainerinsightreceiver/internal/prometheusscraper"
+	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awscontainerinsightreceiver/internal/stores"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/prometheusreceiver"
 )
 
@@ -35,8 +36,9 @@ DCGM_FI_DEV_GPU_UTIL{gpu="0",UUID="uuid",device="nvidia0",modelName="NVIDIA A10G
 `
 
 const (
-	dummyInstanceID  = "i-0000000000"
-	dummyClusterName = "cluster-name"
+	dummyInstanceID   = "i-0000000000"
+	dummyClusterName  = "cluster-name"
+	dummyInstanceType = "instance-type"
 )
 
 type mockHostInfoProvider struct {
@@ -48,6 +50,21 @@ func (m mockHostInfoProvider) GetClusterName() string {
 
 func (m mockHostInfoProvider) GetInstanceID() string {
 	return dummyInstanceID
+}
+
+func (m mockHostInfoProvider) GetInstanceType() string {
+	return dummyInstanceType
+}
+
+type mockDecorator struct {
+}
+
+func (m mockDecorator) Decorate(metric stores.CIMetric) stores.CIMetric {
+	return metric
+}
+
+func (m mockDecorator) Shutdown() error {
+	return nil
 }
 
 type mockConsumer struct {
@@ -104,6 +121,7 @@ func TestNewDcgmScraperEndToEnd(t *testing.T) {
 				ci.AttributeK8sNamespace:  "kube-system",
 				ci.ClusterNameKey:         dummyClusterName,
 				ci.InstanceID:             dummyInstanceID,
+				ci.InstanceType:           dummyInstanceType,
 				ci.AttributeFullPodName:   "fullname-hash",
 				ci.AttributeK8sPodName:    "fullname-hash",
 				ci.AttributeContainerName: "main",
@@ -117,6 +135,7 @@ func TestNewDcgmScraperEndToEnd(t *testing.T) {
 				ci.AttributeK8sNamespace:  "kube-system",
 				ci.ClusterNameKey:         dummyClusterName,
 				ci.InstanceID:             dummyInstanceID,
+				ci.InstanceType:           dummyInstanceType,
 				ci.AttributeFullPodName:   "fullname-hash",
 				ci.AttributeK8sPodName:    "fullname-hash",
 				ci.AttributeContainerName: "main",
