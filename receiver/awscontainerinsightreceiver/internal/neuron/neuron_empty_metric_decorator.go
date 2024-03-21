@@ -40,18 +40,18 @@ var nonCoreAttributeValues = map[string]string{
 	percentile:     "p50",
 }
 
-type NeuronEmptyMetricDecorator struct {
+type EmptyMetricDecorator struct {
 	NextConsumer consumer.Metrics
 	Logger       *zap.Logger
 }
 
-func (ned *NeuronEmptyMetricDecorator) Capabilities() consumer.Capabilities {
+func (ed *EmptyMetricDecorator) Capabilities() consumer.Capabilities {
 	return consumer.Capabilities{
 		MutatesData: true,
 	}
 }
 
-func (ned *NeuronEmptyMetricDecorator) ConsumeMetrics(ctx context.Context, md pmetric.Metrics) error {
+func (ed *EmptyMetricDecorator) ConsumeMetrics(ctx context.Context, md pmetric.Metrics) error {
 	rms := md.ResourceMetrics()
 	for i := 0; i < rms.Len(); i++ {
 		rs := rms.At(i)
@@ -62,14 +62,14 @@ func (ned *NeuronEmptyMetricDecorator) ConsumeMetrics(ctx context.Context, md pm
 
 			neuronHardwareInfo, neuronHardwareInfoFound := findNeuronHardwareInfo(metrics)
 			if neuronHardwareInfoFound {
-				ned.addEmptyMetrics(neuronHardwareInfo, metrics)
+				ed.addEmptyMetrics(neuronHardwareInfo, metrics)
 			}
 		}
 	}
-	return ned.NextConsumer.ConsumeMetrics(ctx, md)
+	return ed.NextConsumer.ConsumeMetrics(ctx, md)
 }
 
-func (ned *NeuronEmptyMetricDecorator) addEmptyMetrics(hardwareInfo pmetric.Metric, metrics pmetric.MetricSlice) {
+func (ed *EmptyMetricDecorator) addEmptyMetrics(hardwareInfo pmetric.Metric, metrics pmetric.MetricSlice) {
 	var metricFoundMap = make(map[string]bool)
 	for k := range attributeConfig {
 		metricFoundMap[k] = false

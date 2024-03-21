@@ -15,7 +15,7 @@ import (
 
 func TestConsumeMetricsForNeuronEmptyMetricsDecorator(t *testing.T) {
 	logger, _ := zap.NewDevelopment()
-	ned := &NeuronEmptyMetricDecorator{
+	ned := &EmptyMetricDecorator{
 		NextConsumer: consumertest.NewNop(),
 		Logger:       logger,
 	}

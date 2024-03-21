@@ -236,7 +236,7 @@ func (acir *awsContainerInsightReceiver) initNeuronScraper(ctx context.Context, 
 		Logger:                acir.settings.Logger,
 	}
 
-	emptyMetricDecoratorConsumer := neuron.NeuronEmptyMetricDecorator{
+	emptyMetricDecoratorConsumer := neuron.EmptyMetricDecorator{
 		NextConsumer: &decoConsumer,
 		Logger:       acir.settings.Logger,
 	}
