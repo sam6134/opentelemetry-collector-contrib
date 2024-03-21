@@ -236,13 +236,18 @@ func (acir *awsContainerInsightReceiver) initNeuronScraper(ctx context.Context, 
 		Logger:                acir.settings.Logger,
 	}
 
+	emptyMetricDecoratorConsumer := neuron.NeuronEmptyMetricDecorator{
+		NextConsumer: &decoConsumer,
+		Logger:       acir.settings.Logger,
+	}
+
 	acir.podResourcesStore = stores.NewPodResourcesStore(acir.settings.Logger)
 	acir.podResourcesStore.AddResourceName("aws.amazon.com/neuroncore")
 	acir.podResourcesStore.AddResourceName("aws.amazon.com/neuron")
 	acir.podResourcesStore.AddResourceName("aws.amazon.com/neurondevice")
 
 	podAttributesDecoratorConsumer := neuron.PodAttributesDecoratorConsumer{
-		NextConsumer:      &decoConsumer,
+		NextConsumer:      &emptyMetricDecoratorConsumer,
 		PodResourcesStore: acir.podResourcesStore,
 		Logger:            acir.settings.Logger,
 	}

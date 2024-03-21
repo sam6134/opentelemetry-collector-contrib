@@ -63,23 +63,25 @@ func RunDecoratorTestScenarios(ctx context.Context, t *testing.T, dc consumer.Me
 	}
 }
 
-func GenerateMetrics(nameToDimsGauge map[MetricIdentifier]map[string]string) pmetric.Metrics {
+func GenerateMetrics(nameToDimsGauges map[MetricIdentifier][]map[string]string) pmetric.Metrics {
 	md := pmetric.NewMetrics()
 	ms := md.ResourceMetrics().AppendEmpty().ScopeMetrics().AppendEmpty().Metrics()
-	for metric, dims := range nameToDimsGauge {
-		m := ms.AppendEmpty()
-		m.SetName(metric.Name)
-		metricBody := m.SetEmptyGauge().DataPoints().AppendEmpty()
-		if metric.MetricType == pmetric.MetricTypeSum {
-			metricBody = m.SetEmptySum().DataPoints().AppendEmpty()
-		}
-		metricBody.SetIntValue(10)
-		for k, v := range dims {
-			if k == "Unit" {
-				m.SetUnit(v)
-				continue
+	for metric, dims := range nameToDimsGauges {
+		for _, dim := range dims {
+			m := ms.AppendEmpty()
+			m.SetName(metric.Name)
+			metricBody := m.SetEmptyGauge().DataPoints().AppendEmpty()
+			if metric.MetricType == pmetric.MetricTypeSum {
+				metricBody = m.SetEmptySum().DataPoints().AppendEmpty()
 			}
-			metricBody.Attributes().PutStr(k, v)
+			metricBody.SetDoubleValue(0)
+			for k, v := range dim {
+				if k == "Unit" {
+					m.SetUnit(v)
+					continue
+				}
+				metricBody.Attributes().PutStr(k, v)
+			}
 		}
 	}
 	return md
