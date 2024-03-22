@@ -281,6 +281,251 @@ func TestConsumeMetricsForNeuronEmptyMetricsDecorator(t *testing.T) {
 			}),
 			ShouldError: false,
 		},
+		"some_metrics_populated": {
+			Metrics: decoratorconsumer.GenerateMetrics(map[decoratorconsumer.MetricIdentifier][]map[string]string{
+				{Name: neuronHardwareInfoKey, MetricType: pmetric.MetricTypeSum}: {
+					{
+						neuronCorePerDeviceKey:        "2",
+						neuronDeviceCountAttributeKey: "2",
+					},
+				},
+				{Name: NeuronExecutionStatus, MetricType: pmetric.MetricTypeGauge}: {
+					{
+						statusType:    "completed",
+						"runtime_tag": "123",
+					},
+				},
+				{Name: NeuronExecutionErrors, MetricType: pmetric.MetricTypeGauge}: {
+					{
+						errorType:     "generic",
+						"runtime_tag": "123",
+					},
+				},
+			}),
+			Want: decoratorconsumer.GenerateMetrics(map[decoratorconsumer.MetricIdentifier][]map[string]string{
+				{Name: neuronHardwareInfoKey, MetricType: pmetric.MetricTypeSum}: {
+					{
+						neuronCorePerDeviceKey:        "2",
+						neuronDeviceCountAttributeKey: "2",
+					},
+				},
+				{Name: NeuronExecutionStatus, MetricType: pmetric.MetricTypeGauge}: {
+					{
+						statusType:    "completed",
+						"runtime_tag": "123",
+					},
+				},
+				{Name: NeuronExecutionErrors, MetricType: pmetric.MetricTypeGauge}: {
+					{
+						errorType:     "generic",
+						"runtime_tag": "123",
+					},
+				},
+				{Name: NeuronRuntimeMemoryUsage, MetricType: pmetric.MetricTypeGauge}: {
+					{
+						neuronCorePerDeviceKey:        "2",
+						neuronDeviceCountAttributeKey: "2",
+						memoryLocation:                "neuron_device",
+						"runtime_tag":                 "default",
+					},
+				},
+				{Name: NeuronExecutionLatency, MetricType: pmetric.MetricTypeGauge}: {
+					{
+						neuronCorePerDeviceKey:        "2",
+						neuronDeviceCountAttributeKey: "2",
+						percentile:                    "p50",
+						"runtime_tag":                 "default",
+					},
+				},
+
+				{Name: NeuronCoreUtilization, MetricType: pmetric.MetricTypeGauge}: {
+					{
+						neuronCorePerDeviceKey:        "2",
+						neuronDeviceCountAttributeKey: "2",
+						neuronCoreAttributeKey:        "0",
+						neuronDeviceAttributeKey:      "0",
+						"runtime_tag":                 "default",
+					},
+					{
+						neuronCorePerDeviceKey:        "2",
+						neuronDeviceCountAttributeKey: "2",
+						neuronCoreAttributeKey:        "1",
+						neuronDeviceAttributeKey:      "1",
+						"runtime_tag":                 "default",
+					},
+					{
+						neuronCorePerDeviceKey:        "2",
+						neuronDeviceCountAttributeKey: "2",
+						neuronCoreAttributeKey:        "2",
+						neuronDeviceAttributeKey:      "0",
+						"runtime_tag":                 "default",
+					},
+					{
+						neuronCorePerDeviceKey:        "2",
+						neuronDeviceCountAttributeKey: "2",
+						neuronCoreAttributeKey:        "3",
+						neuronDeviceAttributeKey:      "1",
+						"runtime_tag":                 "default",
+					},
+				},
+
+				{Name: NeuronCoreMemoryUtilizationConstants, MetricType: pmetric.MetricTypeGauge}: {
+					{
+						neuronCorePerDeviceKey:        "2",
+						neuronDeviceCountAttributeKey: "2",
+						neuronCoreAttributeKey:        "0",
+						neuronDeviceAttributeKey:      "0",
+						"runtime_tag":                 "default",
+					},
+					{
+						neuronCorePerDeviceKey:        "2",
+						neuronDeviceCountAttributeKey: "2",
+						neuronCoreAttributeKey:        "1",
+						neuronDeviceAttributeKey:      "1",
+						"runtime_tag":                 "default",
+					},
+					{
+						neuronCorePerDeviceKey:        "2",
+						neuronDeviceCountAttributeKey: "2",
+						neuronCoreAttributeKey:        "2",
+						neuronDeviceAttributeKey:      "0",
+						"runtime_tag":                 "default",
+					},
+					{
+						neuronCorePerDeviceKey:        "2",
+						neuronDeviceCountAttributeKey: "2",
+						neuronCoreAttributeKey:        "3",
+						neuronDeviceAttributeKey:      "1",
+						"runtime_tag":                 "default",
+					},
+				},
+
+				{Name: NeuronCoreMemoryUtilizationModelCode, MetricType: pmetric.MetricTypeGauge}: {
+					{
+						neuronCorePerDeviceKey:        "2",
+						neuronDeviceCountAttributeKey: "2",
+						neuronCoreAttributeKey:        "0",
+						neuronDeviceAttributeKey:      "0",
+						"runtime_tag":                 "default",
+					},
+					{
+						neuronCorePerDeviceKey:        "2",
+						neuronDeviceCountAttributeKey: "2",
+						neuronCoreAttributeKey:        "1",
+						neuronDeviceAttributeKey:      "1",
+						"runtime_tag":                 "default",
+					},
+					{
+						neuronCorePerDeviceKey:        "2",
+						neuronDeviceCountAttributeKey: "2",
+						neuronCoreAttributeKey:        "2",
+						neuronDeviceAttributeKey:      "0",
+						"runtime_tag":                 "default",
+					},
+					{
+						neuronCorePerDeviceKey:        "2",
+						neuronDeviceCountAttributeKey: "2",
+						neuronCoreAttributeKey:        "3",
+						neuronDeviceAttributeKey:      "1",
+						"runtime_tag":                 "default",
+					},
+				},
+
+				{Name: NeuronCoreMemoryUtilizationSharedScratchpad, MetricType: pmetric.MetricTypeGauge}: {
+					{
+						neuronCorePerDeviceKey:        "2",
+						neuronDeviceCountAttributeKey: "2",
+						neuronCoreAttributeKey:        "0",
+						neuronDeviceAttributeKey:      "0",
+						"runtime_tag":                 "default",
+					},
+					{
+						neuronCorePerDeviceKey:        "2",
+						neuronDeviceCountAttributeKey: "2",
+						neuronCoreAttributeKey:        "1",
+						neuronDeviceAttributeKey:      "1",
+						"runtime_tag":                 "default",
+					},
+					{
+						neuronCorePerDeviceKey:        "2",
+						neuronDeviceCountAttributeKey: "2",
+						neuronCoreAttributeKey:        "2",
+						neuronDeviceAttributeKey:      "0",
+						"runtime_tag":                 "default",
+					},
+					{
+						neuronCorePerDeviceKey:        "2",
+						neuronDeviceCountAttributeKey: "2",
+						neuronCoreAttributeKey:        "3",
+						neuronDeviceAttributeKey:      "1",
+						"runtime_tag":                 "default",
+					},
+				},
+
+				{Name: NeuronCoreMemoryUtilizationRuntimeMemory, MetricType: pmetric.MetricTypeGauge}: {
+					{
+						neuronCorePerDeviceKey:        "2",
+						neuronDeviceCountAttributeKey: "2",
+						neuronCoreAttributeKey:        "0",
+						neuronDeviceAttributeKey:      "0",
+						"runtime_tag":                 "default",
+					},
+					{
+						neuronCorePerDeviceKey:        "2",
+						neuronDeviceCountAttributeKey: "2",
+						neuronCoreAttributeKey:        "1",
+						neuronDeviceAttributeKey:      "1",
+						"runtime_tag":                 "default",
+					},
+					{
+						neuronCorePerDeviceKey:        "2",
+						neuronDeviceCountAttributeKey: "2",
+						neuronCoreAttributeKey:        "2",
+						neuronDeviceAttributeKey:      "0",
+						"runtime_tag":                 "default",
+					},
+					{
+						neuronCorePerDeviceKey:        "2",
+						neuronDeviceCountAttributeKey: "2",
+						neuronCoreAttributeKey:        "3",
+						neuronDeviceAttributeKey:      "1",
+						"runtime_tag":                 "default",
+					},
+				},
+
+				{Name: NeuronCoreMemoryUtilizationTensors, MetricType: pmetric.MetricTypeGauge}: {
+					{
+						neuronCorePerDeviceKey:        "2",
+						neuronDeviceCountAttributeKey: "2",
+						neuronCoreAttributeKey:        "0",
+						neuronDeviceAttributeKey:      "0",
+						"runtime_tag":                 "default",
+					},
+					{
+						neuronCorePerDeviceKey:        "2",
+						neuronDeviceCountAttributeKey: "2",
+						neuronCoreAttributeKey:        "1",
+						neuronDeviceAttributeKey:      "1",
+						"runtime_tag":                 "default",
+					},
+					{
+						neuronCorePerDeviceKey:        "2",
+						neuronDeviceCountAttributeKey: "2",
+						neuronCoreAttributeKey:        "2",
+						neuronDeviceAttributeKey:      "0",
+						"runtime_tag":                 "default",
+					},
+					{
+						neuronCorePerDeviceKey:        "2",
+						neuronDeviceCountAttributeKey: "2",
+						neuronCoreAttributeKey:        "3",
+						neuronDeviceAttributeKey:      "1",
+						"runtime_tag":                 "default",
+					},
+				},
+			}),
+			ShouldError: false,
+		},
 	}
 
 	decoratorconsumer.RunDecoratorTestScenarios(ctx, t, ned, testcases)
