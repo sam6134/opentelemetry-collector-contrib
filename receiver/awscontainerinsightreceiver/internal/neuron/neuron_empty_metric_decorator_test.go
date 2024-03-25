@@ -28,7 +28,7 @@ func TestConsumeMetricsForNeuronEmptyMetricsDecorator(t *testing.T) {
 		},
 		"neuron_hardware_info_not_found": {
 			Metrics: decoratorconsumer.GenerateMetrics(map[decoratorconsumer.MetricIdentifier][]map[string]string{
-				{Name: "test", MetricType: pmetric.MetricTypeGauge}: {
+				{Name: "test", MetricType: pmetric.MetricTypeGauge, DataValue: 1}: {
 					{
 						"device": "test0",
 					},
@@ -36,7 +36,7 @@ func TestConsumeMetricsForNeuronEmptyMetricsDecorator(t *testing.T) {
 			}),
 
 			Want: decoratorconsumer.GenerateMetrics(map[decoratorconsumer.MetricIdentifier][]map[string]string{
-				{Name: "test", MetricType: pmetric.MetricTypeGauge}: {
+				{Name: "test", MetricType: pmetric.MetricTypeGauge, DataValue: 1}: {
 					{
 						"device": "test0",
 					},
@@ -46,7 +46,7 @@ func TestConsumeMetricsForNeuronEmptyMetricsDecorator(t *testing.T) {
 		},
 		"all_metrics_populated": {
 			Metrics: decoratorconsumer.GenerateMetrics(map[decoratorconsumer.MetricIdentifier][]map[string]string{
-				{Name: neuronHardwareInfoKey, MetricType: pmetric.MetricTypeSum}: {
+				{Name: neuronHardwareInfoKey, MetricType: pmetric.MetricTypeSum, DataValue: 1}: {
 					{
 						neuronCorePerDeviceKey:        "2",
 						neuronDeviceCountAttributeKey: "2",
@@ -54,13 +54,13 @@ func TestConsumeMetricsForNeuronEmptyMetricsDecorator(t *testing.T) {
 				},
 			}),
 			Want: decoratorconsumer.GenerateMetrics(map[decoratorconsumer.MetricIdentifier][]map[string]string{
-				{Name: neuronHardwareInfoKey, MetricType: pmetric.MetricTypeSum}: {
+				{Name: neuronHardwareInfoKey, MetricType: pmetric.MetricTypeSum, DataValue: 1}: {
 					{
 						neuronCorePerDeviceKey:        "2",
 						neuronDeviceCountAttributeKey: "2",
 					},
 				},
-				{Name: NeuronExecutionStatus, MetricType: pmetric.MetricTypeGauge}: {
+				{Name: NeuronExecutionStatus, MetricType: pmetric.MetricTypeGauge, DataValue: 0}: {
 					{
 						neuronCorePerDeviceKey:        "2",
 						neuronDeviceCountAttributeKey: "2",
@@ -68,7 +68,7 @@ func TestConsumeMetricsForNeuronEmptyMetricsDecorator(t *testing.T) {
 						"runtime_tag":                 "default",
 					},
 				},
-				{Name: NeuronExecutionErrors, MetricType: pmetric.MetricTypeGauge}: {
+				{Name: NeuronExecutionErrors, MetricType: pmetric.MetricTypeGauge, DataValue: 0}: {
 					{
 						neuronCorePerDeviceKey:        "2",
 						neuronDeviceCountAttributeKey: "2",
@@ -76,7 +76,7 @@ func TestConsumeMetricsForNeuronEmptyMetricsDecorator(t *testing.T) {
 						"runtime_tag":                 "default",
 					},
 				},
-				{Name: NeuronRuntimeMemoryUsage, MetricType: pmetric.MetricTypeGauge}: {
+				{Name: NeuronRuntimeMemoryUsage, MetricType: pmetric.MetricTypeGauge, DataValue: 0}: {
 					{
 						neuronCorePerDeviceKey:        "2",
 						neuronDeviceCountAttributeKey: "2",
@@ -84,7 +84,7 @@ func TestConsumeMetricsForNeuronEmptyMetricsDecorator(t *testing.T) {
 						"runtime_tag":                 "default",
 					},
 				},
-				{Name: NeuronExecutionLatency, MetricType: pmetric.MetricTypeGauge}: {
+				{Name: NeuronExecutionLatency, MetricType: pmetric.MetricTypeGauge, DataValue: 0}: {
 					{
 						neuronCorePerDeviceKey:        "2",
 						neuronDeviceCountAttributeKey: "2",
@@ -93,7 +93,7 @@ func TestConsumeMetricsForNeuronEmptyMetricsDecorator(t *testing.T) {
 					},
 				},
 
-				{Name: NeuronCoreUtilization, MetricType: pmetric.MetricTypeGauge}: {
+				{Name: NeuronCoreUtilization, MetricType: pmetric.MetricTypeGauge, DataValue: 0}: {
 					{
 						neuronCorePerDeviceKey:        "2",
 						neuronDeviceCountAttributeKey: "2",
@@ -124,7 +124,7 @@ func TestConsumeMetricsForNeuronEmptyMetricsDecorator(t *testing.T) {
 					},
 				},
 
-				{Name: NeuronCoreMemoryUtilizationConstants, MetricType: pmetric.MetricTypeGauge}: {
+				{Name: NeuronCoreMemoryUtilizationConstants, MetricType: pmetric.MetricTypeGauge, DataValue: 0}: {
 					{
 						neuronCorePerDeviceKey:        "2",
 						neuronDeviceCountAttributeKey: "2",
@@ -155,7 +155,7 @@ func TestConsumeMetricsForNeuronEmptyMetricsDecorator(t *testing.T) {
 					},
 				},
 
-				{Name: NeuronCoreMemoryUtilizationModelCode, MetricType: pmetric.MetricTypeGauge}: {
+				{Name: NeuronCoreMemoryUtilizationModelCode, MetricType: pmetric.MetricTypeGauge, DataValue: 0}: {
 					{
 						neuronCorePerDeviceKey:        "2",
 						neuronDeviceCountAttributeKey: "2",
@@ -186,7 +186,7 @@ func TestConsumeMetricsForNeuronEmptyMetricsDecorator(t *testing.T) {
 					},
 				},
 
-				{Name: NeuronCoreMemoryUtilizationSharedScratchpad, MetricType: pmetric.MetricTypeGauge}: {
+				{Name: NeuronCoreMemoryUtilizationSharedScratchpad, MetricType: pmetric.MetricTypeGauge, DataValue: 0}: {
 					{
 						neuronCorePerDeviceKey:        "2",
 						neuronDeviceCountAttributeKey: "2",
@@ -217,7 +217,7 @@ func TestConsumeMetricsForNeuronEmptyMetricsDecorator(t *testing.T) {
 					},
 				},
 
-				{Name: NeuronCoreMemoryUtilizationRuntimeMemory, MetricType: pmetric.MetricTypeGauge}: {
+				{Name: NeuronCoreMemoryUtilizationRuntimeMemory, MetricType: pmetric.MetricTypeGauge, DataValue: 0}: {
 					{
 						neuronCorePerDeviceKey:        "2",
 						neuronDeviceCountAttributeKey: "2",
@@ -248,7 +248,7 @@ func TestConsumeMetricsForNeuronEmptyMetricsDecorator(t *testing.T) {
 					},
 				},
 
-				{Name: NeuronCoreMemoryUtilizationTensors, MetricType: pmetric.MetricTypeGauge}: {
+				{Name: NeuronCoreMemoryUtilizationTensors, MetricType: pmetric.MetricTypeGauge, DataValue: 0}: {
 					{
 						neuronCorePerDeviceKey:        "2",
 						neuronDeviceCountAttributeKey: "2",
@@ -283,19 +283,19 @@ func TestConsumeMetricsForNeuronEmptyMetricsDecorator(t *testing.T) {
 		},
 		"some_metrics_populated": {
 			Metrics: decoratorconsumer.GenerateMetrics(map[decoratorconsumer.MetricIdentifier][]map[string]string{
-				{Name: neuronHardwareInfoKey, MetricType: pmetric.MetricTypeSum}: {
+				{Name: neuronHardwareInfoKey, MetricType: pmetric.MetricTypeSum, DataValue: 1}: {
 					{
 						neuronCorePerDeviceKey:        "2",
 						neuronDeviceCountAttributeKey: "2",
 					},
 				},
-				{Name: NeuronExecutionStatus, MetricType: pmetric.MetricTypeGauge}: {
+				{Name: NeuronExecutionStatus, MetricType: pmetric.MetricTypeGauge, DataValue: 1234}: {
 					{
 						statusType:    "completed",
 						"runtime_tag": "123",
 					},
 				},
-				{Name: NeuronExecutionErrors, MetricType: pmetric.MetricTypeGauge}: {
+				{Name: NeuronExecutionErrors, MetricType: pmetric.MetricTypeGauge, DataValue: 1111}: {
 					{
 						errorType:     "generic",
 						"runtime_tag": "123",
@@ -303,25 +303,25 @@ func TestConsumeMetricsForNeuronEmptyMetricsDecorator(t *testing.T) {
 				},
 			}),
 			Want: decoratorconsumer.GenerateMetrics(map[decoratorconsumer.MetricIdentifier][]map[string]string{
-				{Name: neuronHardwareInfoKey, MetricType: pmetric.MetricTypeSum}: {
+				{Name: neuronHardwareInfoKey, MetricType: pmetric.MetricTypeSum, DataValue: 1}: {
 					{
 						neuronCorePerDeviceKey:        "2",
 						neuronDeviceCountAttributeKey: "2",
 					},
 				},
-				{Name: NeuronExecutionStatus, MetricType: pmetric.MetricTypeGauge}: {
+				{Name: NeuronExecutionStatus, MetricType: pmetric.MetricTypeGauge, DataValue: 1234}: {
 					{
 						statusType:    "completed",
 						"runtime_tag": "123",
 					},
 				},
-				{Name: NeuronExecutionErrors, MetricType: pmetric.MetricTypeGauge}: {
+				{Name: NeuronExecutionErrors, MetricType: pmetric.MetricTypeGauge, DataValue: 1111}: {
 					{
 						errorType:     "generic",
 						"runtime_tag": "123",
 					},
 				},
-				{Name: NeuronRuntimeMemoryUsage, MetricType: pmetric.MetricTypeGauge}: {
+				{Name: NeuronRuntimeMemoryUsage, MetricType: pmetric.MetricTypeGauge, DataValue: 0}: {
 					{
 						neuronCorePerDeviceKey:        "2",
 						neuronDeviceCountAttributeKey: "2",
@@ -329,7 +329,7 @@ func TestConsumeMetricsForNeuronEmptyMetricsDecorator(t *testing.T) {
 						"runtime_tag":                 "default",
 					},
 				},
-				{Name: NeuronExecutionLatency, MetricType: pmetric.MetricTypeGauge}: {
+				{Name: NeuronExecutionLatency, MetricType: pmetric.MetricTypeGauge, DataValue: 0}: {
 					{
 						neuronCorePerDeviceKey:        "2",
 						neuronDeviceCountAttributeKey: "2",
@@ -338,7 +338,7 @@ func TestConsumeMetricsForNeuronEmptyMetricsDecorator(t *testing.T) {
 					},
 				},
 
-				{Name: NeuronCoreUtilization, MetricType: pmetric.MetricTypeGauge}: {
+				{Name: NeuronCoreUtilization, MetricType: pmetric.MetricTypeGauge, DataValue: 0}: {
 					{
 						neuronCorePerDeviceKey:        "2",
 						neuronDeviceCountAttributeKey: "2",
@@ -369,7 +369,7 @@ func TestConsumeMetricsForNeuronEmptyMetricsDecorator(t *testing.T) {
 					},
 				},
 
-				{Name: NeuronCoreMemoryUtilizationConstants, MetricType: pmetric.MetricTypeGauge}: {
+				{Name: NeuronCoreMemoryUtilizationConstants, MetricType: pmetric.MetricTypeGauge, DataValue: 0}: {
 					{
 						neuronCorePerDeviceKey:        "2",
 						neuronDeviceCountAttributeKey: "2",
@@ -400,7 +400,7 @@ func TestConsumeMetricsForNeuronEmptyMetricsDecorator(t *testing.T) {
 					},
 				},
 
-				{Name: NeuronCoreMemoryUtilizationModelCode, MetricType: pmetric.MetricTypeGauge}: {
+				{Name: NeuronCoreMemoryUtilizationModelCode, MetricType: pmetric.MetricTypeGauge, DataValue: 0}: {
 					{
 						neuronCorePerDeviceKey:        "2",
 						neuronDeviceCountAttributeKey: "2",
@@ -431,7 +431,7 @@ func TestConsumeMetricsForNeuronEmptyMetricsDecorator(t *testing.T) {
 					},
 				},
 
-				{Name: NeuronCoreMemoryUtilizationSharedScratchpad, MetricType: pmetric.MetricTypeGauge}: {
+				{Name: NeuronCoreMemoryUtilizationSharedScratchpad, MetricType: pmetric.MetricTypeGauge, DataValue: 0}: {
 					{
 						neuronCorePerDeviceKey:        "2",
 						neuronDeviceCountAttributeKey: "2",
@@ -462,7 +462,7 @@ func TestConsumeMetricsForNeuronEmptyMetricsDecorator(t *testing.T) {
 					},
 				},
 
-				{Name: NeuronCoreMemoryUtilizationRuntimeMemory, MetricType: pmetric.MetricTypeGauge}: {
+				{Name: NeuronCoreMemoryUtilizationRuntimeMemory, MetricType: pmetric.MetricTypeGauge, DataValue: 0}: {
 					{
 						neuronCorePerDeviceKey:        "2",
 						neuronDeviceCountAttributeKey: "2",
@@ -493,7 +493,7 @@ func TestConsumeMetricsForNeuronEmptyMetricsDecorator(t *testing.T) {
 					},
 				},
 
-				{Name: NeuronCoreMemoryUtilizationTensors, MetricType: pmetric.MetricTypeGauge}: {
+				{Name: NeuronCoreMemoryUtilizationTensors, MetricType: pmetric.MetricTypeGauge, DataValue: 0}: {
 					{
 						neuronCorePerDeviceKey:        "2",
 						neuronDeviceCountAttributeKey: "2",

@@ -17,6 +17,7 @@ import (
 type MetricIdentifier struct {
 	Name       string
 	MetricType pmetric.MetricType
+	DataValue  float64
 }
 
 type TestCase struct {
@@ -50,6 +51,7 @@ func RunDecoratorTestScenarios(ctx context.Context, t *testing.T, dc consumer.Me
 			want := wants.At(i)
 			assert.Equal(t, want.Name(), actual.Name())
 			assert.Equal(t, want.Unit(), actual.Unit())
+			assert.Equal(t, getDataValue(&want), getDataValue(&actual))
 			actualAttrs := getAttributesFromMetric(&actual)
 			wantAttrs := getAttributesFromMetric(&want)
 			assert.Equal(t, wantAttrs.Len(), actualAttrs.Len())
@@ -74,7 +76,7 @@ func GenerateMetrics(nameToDimsGauges map[MetricIdentifier][]map[string]string) 
 			if metric.MetricType == pmetric.MetricTypeSum {
 				metricBody = m.SetEmptySum().DataPoints().AppendEmpty()
 			}
-			metricBody.SetDoubleValue(0)
+			metricBody.SetDoubleValue(metric.DataValue)
 			for k, v := range dim {
 				if k == "Unit" {
 					m.SetUnit(v)
@@ -92,4 +94,11 @@ func getAttributesFromMetric(m *pmetric.Metric) pcommon.Map {
 		return m.Gauge().DataPoints().At(0).Attributes()
 	}
 	return m.Sum().DataPoints().At(0).Attributes()
+}
+
+func getDataValue(m *pmetric.Metric) float64 {
+	if m.Type() == pmetric.MetricTypeGauge {
+		return m.Gauge().DataPoints().At(0).DoubleValue()
+	}
+	return m.Sum().DataPoints().At(0).DoubleValue()
 }
