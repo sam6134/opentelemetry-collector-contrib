@@ -40,6 +40,8 @@ var nonCoreAttributeValues = map[string]string{
 	percentile:     "p50",
 }
 
+// The decorator is used to add metric with zero dataPoint values, if not present
+// This allows non-sparse metrics in cases when neuron monitor is not running
 type EmptyMetricDecorator struct {
 	NextConsumer consumer.Metrics
 	Logger       *zap.Logger
