@@ -77,8 +77,8 @@ func (ed *EmptyMetricDecorator) addEmptyMetrics(hardwareInfo pmetric.Metric, met
 		metricFoundMap[k] = false
 	}
 
-	for k := 0; k < metrics.Len(); k++ {
-		m := metrics.At(k)
+	for i := 0; i < metrics.Len(); i++ {
+		m := metrics.At(i)
 		if _, ok := metricFoundMap[m.Name()]; ok {
 			metricFoundMap[m.Name()] = true
 		}
@@ -89,10 +89,10 @@ func (ed *EmptyMetricDecorator) addEmptyMetrics(hardwareInfo pmetric.Metric, met
 			continue
 		}
 		if strings.Contains(k, "core") {
-			populateCoreMetrics(metrics, k, attributeConfig[k], hardwareInfo)
-			continue
+			populateCoreMetrics(metrics, k, hardwareInfo)
+		} else {
+			populateNonCoreMetrics(metrics, k, attributeConfig[k], hardwareInfo)
 		}
-		populateNonCoreMetrics(metrics, k, attributeConfig[k], hardwareInfo)
 	}
 }
 
@@ -109,23 +109,20 @@ func populateNonCoreMetrics(metrics pmetric.MetricSlice, metricName string, attr
 }
 
 // method populates per core metrics, thus empty metrics are added per core
-func populateCoreMetrics(metrics pmetric.MetricSlice, metricName string, attributesToAdd []string, hardwareInfo pmetric.Metric) {
+func populateCoreMetrics(metrics pmetric.MetricSlice, metricName string, hardwareInfo pmetric.Metric) {
 	neuronCoresPerDevice, foundCoresPerDevice := getNeuronCoresPerDevice(hardwareInfo)
 	neuronDeviceCount, foundDeviceCount := getNeuronDeviceCount(hardwareInfo)
 	if !(foundCoresPerDevice && foundDeviceCount) {
 		return
 	}
 
-	for coreIndex := 0; coreIndex < neuronCoresPerDevice; coreIndex++ {
-		for deviceNum := 0; deviceNum < neuronDeviceCount; deviceNum++ {
-			metricToAdd := createNewMetricFromHardwareInfo(hardwareInfo, metricName)
-			metricBody := metricToAdd.Gauge().DataPoints().At(0)
+	for coreIndex := 0; coreIndex < neuronCoresPerDevice*neuronDeviceCount; coreIndex++ {
+		metricToAdd := createNewMetricFromHardwareInfo(hardwareInfo, metricName)
+		metricBody := metricToAdd.Gauge().DataPoints().At(0)
 
-			metricBody.Attributes().PutStr(neuronCoreAttributeKey, strconv.Itoa(coreIndex*neuronDeviceCount+deviceNum))
-			metricBody.Attributes().PutStr(neuronDeviceAttributeKey, strconv.Itoa(deviceNum))
-
-			metricToAdd.CopyTo(metrics.AppendEmpty())
-		}
+		metricBody.Attributes().PutStr(neuronCoreAttributeKey, strconv.Itoa(coreIndex))
+		metricBody.Attributes().PutStr(neuronDeviceAttributeKey, strconv.Itoa(coreIndex/neuronCoresPerDevice))
+		metricToAdd.CopyTo(metrics.AppendEmpty())
 	}
 
 }

@@ -63,47 +63,47 @@ func TestConsumeMetrics(t *testing.T) {
 		},
 		"unit": {
 			Metrics: GenerateMetrics(map[MetricIdentifier][]map[string]string{
-				{util, pmetric.MetricTypeGauge}: {{
+				{util, pmetric.MetricTypeGauge, 0}: {{
 					"device": "test0",
 				}},
-				{memUtil, pmetric.MetricTypeGauge}: {{
+				{memUtil, pmetric.MetricTypeGauge, 0}: {{
 					"device": "test0",
 				}},
-				{memTotal, pmetric.MetricTypeGauge}: {{
+				{memTotal, pmetric.MetricTypeGauge, 0}: {{
 					"device": "test0",
 				}},
-				{memUsed, pmetric.MetricTypeGauge}: {{
+				{memUsed, pmetric.MetricTypeGauge, 0}: {{
 					"device": "test0",
 				}},
-				{powerDraw, pmetric.MetricTypeGauge}: {{
+				{powerDraw, pmetric.MetricTypeGauge, 0}: {{
 					"device": "test0",
 				}},
-				{temp, pmetric.MetricTypeGauge}: {{
+				{temp, pmetric.MetricTypeGauge, 0}: {{
 					"device": "test0",
 				}},
 			}),
 			Want: GenerateMetrics(map[MetricIdentifier][]map[string]string{
-				{util, pmetric.MetricTypeGauge}: {{
+				{util, pmetric.MetricTypeGauge, 0}: {{
 					"device": "test0",
 					"Unit":   "Percent",
 				}},
-				{memUtil, pmetric.MetricTypeGauge}: {{
+				{memUtil, pmetric.MetricTypeGauge, 0}: {{
 					"device": "test0",
 					"Unit":   "Percent",
 				}},
-				{memTotal, pmetric.MetricTypeGauge}: {{
+				{memTotal, pmetric.MetricTypeGauge, 0}: {{
 					"device": "test0",
 					"Unit":   "Bytes",
 				}},
-				{memUsed, pmetric.MetricTypeGauge}: {{
+				{memUsed, pmetric.MetricTypeGauge, 0}: {{
 					"device": "test0",
 					"Unit":   "Bytes",
 				}},
-				{powerDraw, pmetric.MetricTypeGauge}: {{
+				{powerDraw, pmetric.MetricTypeGauge, 0}: {{
 					"device": "test0",
 					"Unit":   "None",
 				}},
-				{temp, pmetric.MetricTypeGauge}: {{
+				{temp, pmetric.MetricTypeGauge, 0}: {{
 					"device": "test0",
 					"Unit":   "None",
 				}},
@@ -112,12 +112,12 @@ func TestConsumeMetrics(t *testing.T) {
 		},
 		"noUnit": {
 			Metrics: GenerateMetrics(map[MetricIdentifier][]map[string]string{
-				{"test", pmetric.MetricTypeGauge}: {{
+				{"test", pmetric.MetricTypeGauge, 0}: {{
 					"device": "test0",
 				}},
 			}),
 			Want: GenerateMetrics(map[MetricIdentifier][]map[string]string{
-				{"test", pmetric.MetricTypeGauge}: {{
+				{"test", pmetric.MetricTypeGauge, 0}: {{
 					"device": "test0",
 				}},
 			}),
@@ -125,13 +125,13 @@ func TestConsumeMetrics(t *testing.T) {
 		},
 		"typeUnchanged": {
 			Metrics: GenerateMetrics(map[MetricIdentifier][]map[string]string{
-				{util, pmetric.MetricTypeGauge}: {{
+				{util, pmetric.MetricTypeGauge, 0}: {{
 					"device": "test0",
 					"Type":   "TestType",
 				}},
 			}),
 			Want: GenerateMetrics(map[MetricIdentifier][]map[string]string{
-				{util, pmetric.MetricTypeGauge}: {{
+				{util, pmetric.MetricTypeGauge, 0}: {{
 					"device": "test0",
 					"Type":   "TestType",
 					"Unit":   "Percent",
