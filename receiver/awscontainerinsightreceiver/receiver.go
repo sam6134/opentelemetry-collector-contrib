@@ -227,6 +227,7 @@ func (acir *awsContainerInsightReceiver) initNeuronScraper(ctx context.Context, 
 	if !acir.config.EnableAcceleratedComputeMetrics {
 		return nil
 	}
+	var err error
 
 	decoConsumer := decoratorconsumer.DecorateConsumer{
 		ContainerOrchestrator: ci.EKS,
@@ -240,8 +241,12 @@ func (acir *awsContainerInsightReceiver) initNeuronScraper(ctx context.Context, 
 		NextConsumer: &decoConsumer,
 		Logger:       acir.settings.Logger,
 	}
-
-	acir.podResourcesStore = stores.NewPodResourcesStore(acir.settings.Logger)
+  
+	acir.podResourcesStore, err = stores.NewPodResourcesStore(acir.settings.Logger)
+	if err != nil {
+		return err
+	}
+  
 	acir.podResourcesStore.AddResourceName("aws.amazon.com/neuroncore")
 	acir.podResourcesStore.AddResourceName("aws.amazon.com/neuron")
 	acir.podResourcesStore.AddResourceName("aws.amazon.com/neurondevice")
@@ -262,7 +267,6 @@ func (acir *awsContainerInsightReceiver) initNeuronScraper(ctx context.Context, 
 		Logger:            acir.settings.Logger,
 	}
 
-	var err error
 	acir.neuronMonitorScraper, err = prometheusscraper.NewSimplePrometheusScraper(scraperOpts)
 	return err
 }
