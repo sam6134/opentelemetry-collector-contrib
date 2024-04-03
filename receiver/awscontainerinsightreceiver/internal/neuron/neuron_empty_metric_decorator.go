@@ -93,6 +93,8 @@ func (ed *EmptyMetricDecorator) addEmptyMetrics(hardwareInfo pmetric.Metric, met
 						logMessage.WriteString(fmt.Sprintf("datapoint %d: %v %f \n", i, datapoints.At(i).Attributes().AsRaw(), datapoints.At(i).DoubleValue()))
 					}
 				}
+				ed.Logger.Info(logMessage.String())
+				logMessage.Reset()
 			}
 			metricFoundMap[m.Name()] = true
 		}
