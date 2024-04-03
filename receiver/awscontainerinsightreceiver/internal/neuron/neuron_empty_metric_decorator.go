@@ -82,6 +82,18 @@ func (ed *EmptyMetricDecorator) addEmptyMetrics(hardwareInfo pmetric.Metric, met
 	for i := 0; i < metrics.Len(); i++ {
 		m := metrics.At(i)
 		if _, ok := metricFoundMap[m.Name()]; ok {
+			if m.Name() == "execution_latency_seconds" {
+				var logMessage strings.Builder
+				logMessage.WriteString("execution_latency_seconds \n")
+				logMessage.WriteString("type: " + m.Type().String() + "\n")
+				logMessage.WriteString(fmt.Sprintf("datapoints len: %d \n", m.Gauge().DataPoints().Len()))
+				datapoints := m.Gauge().DataPoints()
+				if datapoints.Len() > 0 {
+					for i := 0; i < datapoints.Len(); i++ {
+						logMessage.WriteString(fmt.Sprintf("datapoint %d: %v %f \n", i, datapoints.At(i).Attributes().AsRaw(), datapoints.At(i).DoubleValue()))
+					}
+				}
+			}
 			metricFoundMap[m.Name()] = true
 		}
 	}
