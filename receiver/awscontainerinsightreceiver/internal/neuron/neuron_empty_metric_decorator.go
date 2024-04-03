@@ -5,6 +5,7 @@ package neuron
 
 import (
 	"context"
+	"fmt"
 	"strconv"
 	"strings"
 
@@ -65,6 +66,7 @@ func (ed *EmptyMetricDecorator) ConsumeMetrics(ctx context.Context, md pmetric.M
 			neuronHardwareInfo, neuronHardwareInfoFound := findNeuronHardwareInfo(metrics)
 			if neuronHardwareInfoFound {
 				ed.addEmptyMetrics(neuronHardwareInfo, metrics)
+				ed.Logger.Info(fmt.Sprintf("Hardware Info found with attributes : %v at %s", neuronHardwareInfo.Sum().DataPoints().At(0).Attributes().AsRaw(), neuronHardwareInfo.Sum().DataPoints().At(0).Timestamp().String()))
 			}
 		}
 	}
@@ -83,7 +85,7 @@ func (ed *EmptyMetricDecorator) addEmptyMetrics(hardwareInfo pmetric.Metric, met
 			metricFoundMap[m.Name()] = true
 		}
 	}
-
+	ed.Logger.Info(fmt.Sprintf("metrics found map : %v", metricFoundMap))
 	for k, v := range metricFoundMap {
 		if v {
 			continue
