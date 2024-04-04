@@ -93,7 +93,7 @@ func (ed *EmptyMetricDecorator) addEmptyMetrics(hardwareInfo pmetric.Metric, met
 				datapoints := m.Gauge().DataPoints()
 				if datapoints.Len() > 0 {
 					for i := 0; i < datapoints.Len(); i++ {
-						logMessage.WriteString(fmt.Sprintf("datapoint %d: %v %f \n", i, datapoints.At(i).Attributes().AsRaw(), datapoints.At(i).DoubleValue()))
+						logMessage.WriteString(fmt.Sprintf("datapoint %d: %v %f %s\n", i, datapoints.At(i).Attributes().AsRaw(), datapoints.At(i).DoubleValue(), datapoints.At(i).Timestamp().String()))
 					}
 				}
 				ed.Logger.Info(logMessage.String())
