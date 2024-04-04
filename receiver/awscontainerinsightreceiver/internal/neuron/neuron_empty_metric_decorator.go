@@ -140,7 +140,7 @@ func populateCoreMetrics(metrics pmetric.MetricSlice, metricName string, hardwar
 	for coreIndex := 0; coreIndex < neuronCoresPerDevice*neuronDeviceCount; coreIndex++ {
 		metricBody := metricToAdd.Gauge().DataPoints().AppendEmpty()
 
-		hardwareInfo.Gauge().DataPoints().At(0).CopyTo(metricBody)
+		hardwareInfo.Sum().DataPoints().At(0).CopyTo(metricBody)
 		metricBody.Attributes().PutStr(neuronCoreAttributeKey, strconv.Itoa(coreIndex))
 		metricBody.Attributes().PutStr(neuronDeviceAttributeKey, strconv.Itoa(coreIndex/neuronCoresPerDevice))
 		metricBody.SetDoubleValue(0)
