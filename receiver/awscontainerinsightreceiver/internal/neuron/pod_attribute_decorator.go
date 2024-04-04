@@ -47,7 +47,6 @@ func (pdc *PodAttributesDecoratorConsumer) Capabilities() consumer.Capabilities 
 func (pdc *PodAttributesDecoratorConsumer) ConsumeMetrics(ctx context.Context, md pmetric.Metrics) error {
 	pdc.logMd(md, "PodAttributesDecoratorConsumer: Before")
 	pdc.neuronMetricsProcess(md)
-	pdc.logMd(md, "PodAttributesDecoratorConsumer: After")
 	return pdc.NextConsumer.ConsumeMetrics(ctx, md)
 }
 

@@ -55,7 +55,6 @@ func (ed *EmptyMetricDecorator) Capabilities() consumer.Capabilities {
 }
 
 func (ed *EmptyMetricDecorator) ConsumeMetrics(ctx context.Context, md pmetric.Metrics) error {
-	ed.logMd(md, "EmptyMetricDecorator: before adding empty metrics")
 	rms := md.ResourceMetrics()
 	for i := 0; i < rms.Len(); i++ {
 		rs := rms.At(i)
@@ -72,7 +71,6 @@ func (ed *EmptyMetricDecorator) ConsumeMetrics(ctx context.Context, md pmetric.M
 			}
 		}
 	}
-	ed.logMd(md, "EmptyMetricDecorator: after adding empty metrics")
 	return ed.NextConsumer.ConsumeMetrics(ctx, md)
 }
 
