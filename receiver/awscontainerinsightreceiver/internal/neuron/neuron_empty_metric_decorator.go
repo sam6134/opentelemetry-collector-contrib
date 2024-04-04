@@ -207,7 +207,7 @@ func (d *EmptyMetricDecorator) logMd(md pmetric.Metrics, name string) {
 					logMessage.WriteString("\t\t\t\t\t{\n")
 					logMessage.WriteString(fmt.Sprintf("\t\t\t\t\t\t\"attributes\": \"%v\",\n", datapoints.At(yu).Attributes().AsRaw()))
 					logMessage.WriteString(fmt.Sprintf("\t\t\t\t\t\t\"value\": %v,\n", datapoints.At(yu).DoubleValue()))
-					logMessage.WriteString(fmt.Sprintf("\t\t\t\t\t\t\"timestamp\": %v,\n", datapoints.At(yu).DoubleValue()))
+					logMessage.WriteString(fmt.Sprintf("\t\t\t\t\t\t\"timestamp\": %s,\n", datapoints.At(yu).Timestamp().String()))
 					logMessage.WriteString("\t\t\t\t\t},\n")
 				}
 				logMessage.WriteString("\t\t\t\t],\n")
