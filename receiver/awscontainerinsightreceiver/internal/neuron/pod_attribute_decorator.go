@@ -5,7 +5,9 @@ package neuron // import "github.com/open-telemetry/opentelemetry-collector-cont
 
 import (
 	"context"
+	"fmt"
 	"strconv"
+	"strings"
 
 	ci "github.com/open-telemetry/opentelemetry-collector-contrib/internal/aws/containerinsight"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awscontainerinsightreceiver/internal/stores"
@@ -43,7 +45,9 @@ func (pdc *PodAttributesDecoratorConsumer) Capabilities() consumer.Capabilities 
 }
 
 func (pdc *PodAttributesDecoratorConsumer) ConsumeMetrics(ctx context.Context, md pmetric.Metrics) error {
+	pdc.logMd(md, "PodAttributesDecoratorConsumer: Before")
 	pdc.neuronMetricsProcess(md)
+	pdc.logMd(md, "PodAttributesDecoratorConsumer: After")
 	return pdc.NextConsumer.ConsumeMetrics(ctx, md)
 }
 
@@ -155,4 +159,54 @@ func getNeuronCoresPerDevice(neuronHardwareInfo pmetric.Metric) (int, bool) {
 func getNeuronDeviceIndexFromCoreAttribute(neuronCoreIndex pcommon.Value, neuronCoresPerDevice int) string {
 	neuronCoreIndexIntVal, _ := strconv.Atoi(neuronCoreIndex.AsString())
 	return strconv.Itoa(neuronCoreIndexIntVal / neuronCoresPerDevice)
+}
+func (d *PodAttributesDecoratorConsumer) logMd(md pmetric.Metrics, name string) {
+	var logMessage strings.Builder
+
+	logMessage.WriteString(fmt.Sprintf("\"%s_METRICS_MD\" : {\n", name))
+	rms := md.ResourceMetrics()
+	for i := 0; i < rms.Len(); i++ {
+		rs := rms.At(i)
+		ilms := rs.ScopeMetrics()
+		logMessage.WriteString(fmt.Sprintf("\t\"ResourceMetric_%d\": {\n", i))
+		for j := 0; j < ilms.Len(); j++ {
+			ils := ilms.At(j)
+			metrics := ils.Metrics()
+			logMessage.WriteString(fmt.Sprintf("\t\t\"ScopeMetric_%d\": {\n", j))
+			logMessage.WriteString(fmt.Sprintf("\t\t\"Metrics_%d\": [\n", j))
+
+			for k := 0; k < metrics.Len(); k++ {
+				m := metrics.At(k)
+				logMessage.WriteString(fmt.Sprintf("\t\t\t\"Metric_%d\": {\n", k))
+				logMessage.WriteString(fmt.Sprintf("\t\t\t\t\"name\": \"%s\",\n", m.Name()))
+
+				var datapoints pmetric.NumberDataPointSlice
+				switch m.Type() {
+				case pmetric.MetricTypeGauge:
+					datapoints = m.Gauge().DataPoints()
+				case pmetric.MetricTypeSum:
+					datapoints = m.Sum().DataPoints()
+				default:
+					datapoints = pmetric.NewNumberDataPointSlice()
+				}
+
+				logMessage.WriteString("\t\t\t\t\"datapoints\": [\n")
+				for yu := 0; yu < datapoints.Len(); yu++ {
+					logMessage.WriteString("\t\t\t\t\t{\n")
+					logMessage.WriteString(fmt.Sprintf("\t\t\t\t\t\t\"attributes\": \"%v\",\n", datapoints.At(yu).Attributes().AsRaw()))
+					logMessage.WriteString(fmt.Sprintf("\t\t\t\t\t\t\"value\": %v,\n", datapoints.At(yu).DoubleValue()))
+					logMessage.WriteString(fmt.Sprintf("\t\t\t\t\t\t\"timestamp\": %s,\n", datapoints.At(yu).Timestamp().String()))
+					logMessage.WriteString("\t\t\t\t\t},\n")
+				}
+				logMessage.WriteString("\t\t\t\t],\n")
+				logMessage.WriteString("\t\t\t},\n")
+			}
+			logMessage.WriteString("\t\t],\n")
+			logMessage.WriteString("\t\t},\n")
+		}
+		logMessage.WriteString("\t},\n")
+	}
+	logMessage.WriteString("},\n")
+
+	d.Logger.Info(logMessage.String())
 }
