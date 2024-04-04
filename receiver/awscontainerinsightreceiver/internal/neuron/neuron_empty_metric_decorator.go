@@ -68,6 +68,7 @@ func (ed *EmptyMetricDecorator) ConsumeMetrics(ctx context.Context, md pmetric.M
 			if neuronHardwareInfoFound {
 				ed.addEmptyMetrics(neuronHardwareInfo, metrics)
 				ed.Logger.Info(fmt.Sprintf("Hardware Info found with attributes : %v at %s", neuronHardwareInfo.Sum().DataPoints().At(0).Attributes().AsRaw(), neuronHardwareInfo.Sum().DataPoints().At(0).Timestamp().String()))
+				break
 			}
 		}
 	}
@@ -84,9 +85,9 @@ func (ed *EmptyMetricDecorator) addEmptyMetrics(hardwareInfo pmetric.Metric, met
 	for i := 0; i < metrics.Len(); i++ {
 		m := metrics.At(i)
 		if _, ok := metricFoundMap[m.Name()]; ok {
-			if m.Name() == "execution_latency_seconds" {
+			if m.Name() == NeuronCoreUtilization {
 				var logMessage strings.Builder
-				logMessage.WriteString("execution_latency_seconds \n")
+				logMessage.WriteString("NeuronCoreUtilizationMetricEmptySnapshot \n")
 				logMessage.WriteString("type: " + m.Type().String() + "\n")
 				logMessage.WriteString(fmt.Sprintf("datapoints len: %d \n", m.Gauge().DataPoints().Len()))
 				datapoints := m.Gauge().DataPoints()
