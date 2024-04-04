@@ -166,6 +166,7 @@ func createNewMetricFromHardwareInfo(hardwareInfo pmetric.Metric, metricName str
 	metricToAdd.SetEmptyGauge()
 	hardwareInfo.Sum().DataPoints().CopyTo(metricToAdd.Gauge().DataPoints())
 
+	metricToAdd.SetName(metricName)
 	metricBody := metricToAdd.Gauge().DataPoints().At(0)
 	metricBody.SetDoubleValue(0)
 	metricBody.Attributes().PutStr("runtime_tag", "default")
