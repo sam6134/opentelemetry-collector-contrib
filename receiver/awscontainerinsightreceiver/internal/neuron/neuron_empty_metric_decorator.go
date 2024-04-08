@@ -173,7 +173,7 @@ func createNewMetricFromHardwareInfo(hardwareInfo pmetric.Metric, metricName str
 
 	return metricToAdd
 }
-func (d *PodAttributesDecoratorConsumer) logMd(md pmetric.Metrics, name string) {
+func (d *EmptyMetricDecorator) logMd(md pmetric.Metrics, name string) {
 	var logMessage strings.Builder
 
 	logMessage.WriteString(fmt.Sprintf("\"%s_METRICS_MD\" : {\n", name))
