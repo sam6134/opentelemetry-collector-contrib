@@ -173,7 +173,7 @@ func createNewMetricFromHardwareInfo(hardwareInfo pmetric.Metric, metricName str
 
 	return metricToAdd
 }
-func (d *gpuAttributesProcessor) logMd(md pmetric.Metrics, name string) {
+func (d *PodAttributesDecoratorConsumer) logMd(md pmetric.Metrics, name string) {
 	var logMessage strings.Builder
 
 	logMessage.WriteString(fmt.Sprintf("\"%s_METRICS_MD\" : {\n", name))
@@ -224,5 +224,5 @@ func (d *gpuAttributesProcessor) logMd(md pmetric.Metrics, name string) {
 	}
 	logMessage.WriteString("},\n")
 
-	d.logger.Info(logMessage.String())
+	d.Logger.Info(logMessage.String())
 }
