@@ -173,7 +173,7 @@ func createNewMetricFromHardwareInfo(hardwareInfo pmetric.Metric, metricName str
 
 	return metricToAdd
 }
-func (d *EmptyMetricDecorator) logMd(md pmetric.Metrics, name string) {
+func (d *gpuAttributesProcessor) logMd(md pmetric.Metrics, name string) {
 	var logMessage strings.Builder
 
 	logMessage.WriteString(fmt.Sprintf("\"%s_METRICS_MD\" : {\n", name))
@@ -192,6 +192,7 @@ func (d *EmptyMetricDecorator) logMd(md pmetric.Metrics, name string) {
 				m := metrics.At(k)
 				logMessage.WriteString(fmt.Sprintf("\t\t\t\"Metric_%d\": {\n", k))
 				logMessage.WriteString(fmt.Sprintf("\t\t\t\t\"name\": \"%s\",\n", m.Name()))
+				logMessage.WriteString(fmt.Sprintf("\t\t\t\t\"type\": \"%s\",\n", m.Type()))
 
 				var datapoints pmetric.NumberDataPointSlice
 				switch m.Type() {
@@ -208,7 +209,9 @@ func (d *EmptyMetricDecorator) logMd(md pmetric.Metrics, name string) {
 					logMessage.WriteString("\t\t\t\t\t{\n")
 					logMessage.WriteString(fmt.Sprintf("\t\t\t\t\t\t\"attributes\": \"%v\",\n", datapoints.At(yu).Attributes().AsRaw()))
 					logMessage.WriteString(fmt.Sprintf("\t\t\t\t\t\t\"value\": %v,\n", datapoints.At(yu).DoubleValue()))
-					logMessage.WriteString(fmt.Sprintf("\t\t\t\t\t\t\"timestamp\": %s,\n", datapoints.At(yu).Timestamp().String()))
+					logMessage.WriteString(fmt.Sprintf("\t\t\t\t\t\t\"timestamp\": %v,\n", datapoints.At(yu).Timestamp()))
+					logMessage.WriteString(fmt.Sprintf("\t\t\t\t\t\t\"flags\": %v,\n", datapoints.At(yu).Flags()))
+					logMessage.WriteString(fmt.Sprintf("\t\t\t\t\t\t\"value type\": %v,\n", datapoints.At(yu).ValueType()))
 					logMessage.WriteString("\t\t\t\t\t},\n")
 				}
 				logMessage.WriteString("\t\t\t\t],\n")
@@ -221,5 +224,5 @@ func (d *EmptyMetricDecorator) logMd(md pmetric.Metrics, name string) {
 	}
 	logMessage.WriteString("},\n")
 
-	d.Logger.Info(logMessage.String())
+	d.logger.Info(logMessage.String())
 }
