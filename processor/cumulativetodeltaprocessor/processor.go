@@ -42,6 +42,7 @@ func newCumulativeToDeltaProcessor(config *Config, logger *zap.Logger) *cumulati
 
 // processMetrics implements the ProcessMetricsFunc type.
 func (ctdp *cumulativeToDeltaProcessor) processMetrics(_ context.Context, md pmetric.Metrics) (pmetric.Metrics, error) {
+	ctdp.logger.Info("super_imp_place")
 	ctdp.logMd(md, "before c2d processor")
 	md.ResourceMetrics().RemoveIf(func(rm pmetric.ResourceMetrics) bool {
 		rm.ScopeMetrics().RemoveIf(func(ilm pmetric.ScopeMetrics) bool {
