@@ -62,7 +62,7 @@ require (
 	github.com/open-telemetry/opentelemetry-collector-contrib/extension/sigv4authextension v0.89.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/extension/storage v0.89.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/processor/attributesprocessor v0.89.0
-	github.com/open-telemetry/opentelemetry-collector-contrib/processor/cumulativetodeltaprocessor v0.89.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/processor/cumulativetodeltaprocessor v0.0.0-00010101000000-000000000000
 	github.com/open-telemetry/opentelemetry-collector-contrib/processor/datadogprocessor v0.89.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/processor/deltatorateprocessor v0.89.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/processor/filterprocessor v0.89.0
@@ -902,6 +902,8 @@ replace github.com/open-telemetry/opentelemetry-collector-contrib/pkg/translator
 replace github.com/open-telemetry/opentelemetry-collector-contrib/processor/attributesprocessor => ./processor/attributesprocessor
 
 replace github.com/open-telemetry/opentelemetry-collector-contrib/processor/cumulativetodeltaprocessor => ./processor/cumulativetodeltaprocessor/
+
+replace github.com/open-telemetry/opentelemetry-collector-contrib/processor/deltatosparseprocessor => ./processor/deltatosparseprocessor/
 
 replace github.com/open-telemetry/opentelemetry-collector-contrib/processor/datadogprocessor => ./processor/datadogprocessor
 
