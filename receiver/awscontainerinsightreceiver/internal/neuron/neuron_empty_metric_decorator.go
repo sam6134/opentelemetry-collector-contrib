@@ -22,8 +22,8 @@ const (
 )
 
 var attributeConfig = map[string][]string{
-	NeuronExecutionStatus:                       {statusType},
-	NeuronExecutionErrors:                       {errorType},
+	//NeuronExecutionStatus:                       {statusType},
+	//NeuronExecutionErrors:                       {errorType},
 	NeuronRuntimeMemoryUsage:                    {memoryLocation},
 	NeuronExecutionLatency:                      {percentile},
 	NeuronCoreUtilization:                       {neuronCoreAttributeKey, neuronDeviceAttributeKey},
