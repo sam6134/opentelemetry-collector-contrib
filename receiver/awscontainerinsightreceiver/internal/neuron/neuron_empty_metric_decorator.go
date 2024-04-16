@@ -1,7 +1,7 @@
 // Copyright The OpenTelemetry Authors
 // SPDX-License-Identifier: Apache-2.0
 
-package neuron
+package neuron // import "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awscontainerinsightreceiver/internal/neuron"
 
 import (
 	"context"
@@ -17,13 +17,14 @@ import (
 const (
 	statusType     = "status_type"
 	errorType      = "error_type"
+	eventType      = "event_type"
 	memoryLocation = "memory_location"
 	percentile     = "percentile"
 )
 
 var attributeConfig = map[string][]string{
-	//NeuronExecutionStatus:                       {statusType},
-	//NeuronExecutionErrors:                       {errorType},
+	NeuronExecutionStatus:                       {statusType},
+	NeuronExecutionErrors:                       {errorType},
 	NeuronRuntimeMemoryUsage:                    {memoryLocation},
 	NeuronExecutionLatency:                      {percentile},
 	NeuronCoreUtilization:                       {neuronCoreAttributeKey, neuronDeviceAttributeKey},
@@ -32,13 +33,15 @@ var attributeConfig = map[string][]string{
 	NeuronCoreMemoryUtilizationSharedScratchpad: {neuronCoreAttributeKey, neuronDeviceAttributeKey},
 	NeuronCoreMemoryUtilizationRuntimeMemory:    {neuronCoreAttributeKey, neuronDeviceAttributeKey},
 	NeuronCoreMemoryUtilizationTensors:          {neuronCoreAttributeKey, neuronDeviceAttributeKey},
+	NeuronDeviceHardwareEccEvents:               {eventType, neuronDeviceAttributeKey},
 }
 
-var nonCoreAttributeValues = map[string]string{
+var defaultAttributeValues = map[string]string{
 	statusType:     "completed",
 	errorType:      "generic",
 	memoryLocation: "neuron_device",
 	percentile:     "p50",
+	eventType:      "mem_corrected",
 }
 
 // The decorator is used to add metric with zero dataPoint values, if not present
@@ -83,30 +86,18 @@ func (ed *EmptyMetricDecorator) addEmptyMetrics(hardwareInfo pmetric.Metric, met
 	for i := 0; i < metrics.Len(); i++ {
 		m := metrics.At(i)
 		if _, ok := metricFoundMap[m.Name()]; ok {
-			if m.Name() == NeuronCoreUtilization {
-				var logMessage strings.Builder
-				logMessage.WriteString("NeuronCoreUtilizationMetricEmptySnapshot \n")
-				logMessage.WriteString("type: " + m.Type().String() + "\n")
-				logMessage.WriteString(fmt.Sprintf("datapoints len: %d \n", m.Gauge().DataPoints().Len()))
-				datapoints := m.Gauge().DataPoints()
-				if datapoints.Len() > 0 {
-					for i := 0; i < datapoints.Len(); i++ {
-						logMessage.WriteString(fmt.Sprintf("datapoint %d: %v %f %s\n", i, datapoints.At(i).Attributes().AsRaw(), datapoints.At(i).DoubleValue(), datapoints.At(i).Timestamp().String()))
-					}
-				}
-				ed.Logger.Info(logMessage.String())
-				logMessage.Reset()
-			}
 			metricFoundMap[m.Name()] = true
 		}
 	}
-	ed.Logger.Info(fmt.Sprintf("metrics found map : %v", metricFoundMap))
+
 	for k, v := range metricFoundMap {
 		if v {
 			continue
 		}
 		if strings.Contains(k, "core") {
-			populateCoreMetrics(metrics, k, hardwareInfo)
+			populateCoreMetrics(metrics, k, attributeConfig[k], hardwareInfo)
+		} else if strings.Contains(k, "device") {
+			populateDeviceMetrics(metrics, k, attributeConfig[k], hardwareInfo)
 		} else {
 			populateNonCoreMetrics(metrics, k, attributeConfig[k], hardwareInfo)
 		}
@@ -119,30 +110,61 @@ func populateNonCoreMetrics(metrics pmetric.MetricSlice, metricName string, attr
 	metricBody := metricToAdd.Gauge().DataPoints().At(0)
 
 	for _, attribute := range attributesToAdd {
-		metricBody.Attributes().PutStr(attribute, nonCoreAttributeValues[attribute])
+		defaultAttributeValue, defaultValueExists := defaultAttributeValues[attribute]
+		if defaultValueExists {
+			metricBody.Attributes().PutStr(attribute, defaultAttributeValue)
+		}
 	}
 
 	metricToAdd.CopyTo(metrics.AppendEmpty())
 }
 
 // method populates per core metrics, thus empty metrics are added per core
-func populateCoreMetrics(metrics pmetric.MetricSlice, metricName string, hardwareInfo pmetric.Metric) {
+func populateCoreMetrics(metrics pmetric.MetricSlice, metricName string, attributesToAdd []string, hardwareInfo pmetric.Metric) {
 	neuronCoresPerDevice, foundCoresPerDevice := getNeuronCoresPerDevice(hardwareInfo)
 	neuronDeviceCount, foundDeviceCount := getNeuronDeviceCount(hardwareInfo)
 	if !(foundCoresPerDevice && foundDeviceCount) {
 		return
 	}
-	metricToAdd := metrics.AppendEmpty()
-	metricToAdd.SetName(metricName)
-	metricToAdd.SetEmptyGauge()
-	for coreIndex := 0; coreIndex < neuronCoresPerDevice*neuronDeviceCount; coreIndex++ {
-		metricBody := metricToAdd.Gauge().DataPoints().AppendEmpty()
 
-		hardwareInfo.Sum().DataPoints().At(0).CopyTo(metricBody)
+	for coreIndex := 0; coreIndex < neuronCoresPerDevice*neuronDeviceCount; coreIndex++ {
+		metricToAdd := createNewMetricFromHardwareInfo(hardwareInfo, metricName)
+		metricBody := metricToAdd.Gauge().DataPoints().At(0)
+
+		for _, attribute := range attributesToAdd {
+			attributeValue, defaultValueExists := defaultAttributeValues[attribute]
+			if defaultValueExists {
+				metricBody.Attributes().PutStr(attribute, attributeValue)
+			}
+		}
+
 		metricBody.Attributes().PutStr(neuronCoreAttributeKey, strconv.Itoa(coreIndex))
 		metricBody.Attributes().PutStr(neuronDeviceAttributeKey, strconv.Itoa(coreIndex/neuronCoresPerDevice))
-		metricBody.SetDoubleValue(0)
-		metricBody.Attributes().PutStr("runtime_tag", "default")
+		metricToAdd.CopyTo(metrics.AppendEmpty())
+	}
+
+}
+
+// method populates per device metrics, thus empty metrics are added per device
+func populateDeviceMetrics(metrics pmetric.MetricSlice, metricName string, attributesToAdd []string, hardwareInfo pmetric.Metric) {
+	neuronDeviceCount, foundDeviceCount := getNeuronDeviceCount(hardwareInfo)
+	if !(foundDeviceCount) {
+		return
+	}
+
+	for deviceIndex := 0; deviceIndex < neuronDeviceCount; deviceIndex++ {
+		metricToAdd := createNewMetricFromHardwareInfo(hardwareInfo, metricName)
+		metricBody := metricToAdd.Gauge().DataPoints().At(0)
+
+		for _, attribute := range attributesToAdd {
+			attributeValue, defaultValueExists := defaultAttributeValues[attribute]
+			if defaultValueExists {
+				metricBody.Attributes().PutStr(attribute, attributeValue)
+			}
+		}
+
+		metricBody.Attributes().PutStr(neuronDeviceAttributeKey, strconv.Itoa(deviceIndex))
+		metricToAdd.CopyTo(metrics.AppendEmpty())
 	}
 }
 
