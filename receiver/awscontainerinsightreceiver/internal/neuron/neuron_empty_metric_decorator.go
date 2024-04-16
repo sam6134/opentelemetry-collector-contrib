@@ -41,7 +41,7 @@ var defaultAttributeValues = map[string]string{
 	errorType:      "generic",
 	memoryLocation: "neuron_device",
 	percentile:     "p50",
-	eventType:      "mem_corrected",
+	eventType:      "mem_ecc_corrected",
 }
 
 // The decorator is used to add metric with zero dataPoint values, if not present
