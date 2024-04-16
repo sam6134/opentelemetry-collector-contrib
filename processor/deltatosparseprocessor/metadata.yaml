@@ -1,0 +1,9 @@
+type: deltatosparse
+
+status:
+  class: processor
+  stability:
+    beta: [metrics]
+  distributions: [contrib, observiq, sumo, aws]
+  codeowners:
+    active: [Aditya_Purang]
