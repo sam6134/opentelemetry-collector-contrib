@@ -39,7 +39,7 @@ func (dtsp *deltaToSparseProcessor) processMetrics(_ context.Context, md pmetric
 			metricsLength := metrics.Len()
 			for k := 0; k < metricsLength; k++ {
 				m := metrics.At(k)
-				if d.shouldConvertMetric(m.Name()) &&
+				if dtsp.shouldConvertMetric(m.Name()) &&
 					m.Type() == pmetric.MetricTypeSum &&
 					m.Sum().IsMonotonic() &&
 					m.Sum().AggregationTemporality() == pmetric.AggregationTemporalityDelta {
