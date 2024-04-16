@@ -96,7 +96,7 @@ func (ed *EmptyMetricDecorator) addEmptyMetrics(hardwareInfo pmetric.Metric, met
 		}
 		if strings.Contains(k, "core") {
 			populateCoreMetrics(metrics, k, attributeConfig[k], hardwareInfo)
-		} else if strings.Contains(k, "device") {
+		} else if k == NeuronDeviceHardwareEccEvents {
 			populateDeviceMetrics(metrics, k, attributeConfig[k], hardwareInfo)
 		} else {
 			populateNonCoreMetrics(metrics, k, attributeConfig[k], hardwareInfo)
