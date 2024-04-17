@@ -903,6 +903,8 @@ replace github.com/open-telemetry/opentelemetry-collector-contrib/processor/attr
 
 replace github.com/open-telemetry/opentelemetry-collector-contrib/processor/cumulativetodeltaprocessor => ./processor/cumulativetodeltaprocessor/
 
+replace github.com/open-telemetry/opentelemetry-collector-contrib/processor/deltatosparseprocessor => ./processor/deltatosparseprocessor/
+
 replace github.com/open-telemetry/opentelemetry-collector-contrib/processor/datadogprocessor => ./processor/datadogprocessor
 
 replace github.com/open-telemetry/opentelemetry-collector-contrib/processor/deltatorateprocessor => ./processor/deltatorateprocessor/
