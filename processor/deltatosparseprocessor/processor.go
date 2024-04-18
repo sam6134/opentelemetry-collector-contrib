@@ -5,9 +5,11 @@ package deltatosparseprocessor // import "github.com/open-telemetry/opentelemetr
 
 import (
 	"context"
-	"github.com/open-telemetry/opentelemetry-collector-contrib/internal/filter/filterset"
+
 	"go.opentelemetry.io/collector/pdata/pmetric"
 	"go.uber.org/zap"
+
+	"github.com/open-telemetry/opentelemetry-collector-contrib/internal/filter/filterset"
 )
 
 type deltaToSparseProcessor struct {

@@ -5,8 +5,10 @@ package deltatosparseprocessor // import "github.com/open-telemetry/opentelemetr
 
 import (
 	"fmt"
-	"github.com/open-telemetry/opentelemetry-collector-contrib/internal/filter/filterset"
+
 	"go.opentelemetry.io/collector/component"
+
+	"github.com/open-telemetry/opentelemetry-collector-contrib/internal/filter/filterset"
 )
 
 type Config struct {
