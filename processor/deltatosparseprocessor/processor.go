@@ -1,5 +1,5 @@
-// Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
-// SPDX-License-Identifier: MIT
+// Copyright The OpenTelemetry Authors
+// SPDX-License-Identifier: Apache-2.0
 
 package deltatosparseprocessor // import "github.com/open-telemetry/opentelemetry-collector-contrib/processor/deltatosparseprocessor"
 
@@ -56,5 +56,5 @@ func (dtsp *deltaToSparseProcessor) processMetrics(_ context.Context, md pmetric
 }
 
 func (dtsp *deltaToSparseProcessor) shouldConvertMetric(metricName string) bool {
-	return dtsp.includeFS == nil || dtsp.includeFS.Matches(metricName)
+	return dtsp.includeFS != nil && dtsp.includeFS.Matches(metricName)
 }
