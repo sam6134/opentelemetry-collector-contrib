@@ -35,17 +35,6 @@ type testSumMetric struct {
 	flags        [][]pmetric.DataPointFlags
 }
 
-type testHistogramMetric struct {
-	metricNames   []string
-	metricCounts  [][]uint64
-	metricSums    [][]float64
-	metricMins    [][]float64
-	metricMaxes   [][]float64
-	metricBuckets [][][]uint64
-	isDelta       []bool
-	flags         [][]pmetric.DataPointFlags
-}
-
 type deltaToSparseTest struct {
 	name       string
 	include    MatchMetrics
@@ -263,54 +252,6 @@ func generateTestSumMetrics(tm testSumMetric) pmetric.Metrics {
 			dp := m.Sum().DataPoints().AppendEmpty()
 			dp.SetTimestamp(pcommon.NewTimestampFromTime(now.Add(10 * time.Second)))
 			dp.SetDoubleValue(value)
-			if len(tm.flags) > i && len(tm.flags[i]) > index {
-				dp.SetFlags(tm.flags[i][index])
-			}
-		}
-	}
-
-	return md
-}
-
-func generateTestHistogramMetrics(tm testHistogramMetric) pmetric.Metrics {
-	md := pmetric.NewMetrics()
-	now := time.Now()
-
-	rm := md.ResourceMetrics().AppendEmpty()
-	ms := rm.ScopeMetrics().AppendEmpty().Metrics()
-	for i, name := range tm.metricNames {
-		m := ms.AppendEmpty()
-		m.SetName(name)
-		hist := m.SetEmptyHistogram()
-
-		if tm.isDelta[i] {
-			hist.SetAggregationTemporality(pmetric.AggregationTemporalityCumulative)
-		} else {
-			hist.SetAggregationTemporality(pmetric.AggregationTemporalityDelta)
-		}
-
-		for index, count := range tm.metricCounts[i] {
-			dp := m.Histogram().DataPoints().AppendEmpty()
-			dp.SetTimestamp(pcommon.NewTimestampFromTime(now.Add(10 * time.Second)))
-			dp.SetCount(count)
-
-			sums := tm.metricSums[i]
-			if len(sums) > 0 {
-				dp.SetSum(sums[index])
-			}
-			if tm.metricMins != nil {
-				mins := tm.metricMins[i]
-				if len(mins) > 0 {
-					dp.SetMin(sums[index])
-				}
-			}
-			if tm.metricMaxes != nil {
-				maxes := tm.metricMaxes[i]
-				if len(maxes) > 0 {
-					dp.SetMax(maxes[index])
-				}
-			}
-			dp.BucketCounts().FromRaw(tm.metricBuckets[i][index])
 			if len(tm.flags) > i && len(tm.flags[i]) > index {
 				dp.SetFlags(tm.flags[i][index])
 			}
