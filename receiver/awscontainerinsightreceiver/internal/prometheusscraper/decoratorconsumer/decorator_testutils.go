@@ -27,14 +27,14 @@ type TestCase struct {
 }
 
 func RunDecoratorTestScenarios(ctx context.Context, t *testing.T, dc consumer.Metrics, testcases map[string]TestCase) {
-	for _, tc := range testcases {
+	for testCaseName, tc := range testcases {
 		err := dc.ConsumeMetrics(ctx, tc.Metrics)
 		if tc.ShouldError {
-			assert.Error(t, err)
+			assert.Error(t, err, testCaseName)
 			return
 		}
 		require.NoError(t, err)
-		assert.Equal(t, tc.Want.MetricCount(), tc.Metrics.MetricCount())
+		assert.Equal(t, tc.Want.MetricCount(), tc.Metrics.MetricCount(), testCaseName)
 		if tc.Want.MetricCount() == 0 {
 			continue
 		}
@@ -49,16 +49,16 @@ func RunDecoratorTestScenarios(ctx context.Context, t *testing.T, dc consumer.Me
 		for i := 0; i < wants.Len(); i++ {
 			actual := actuals.At(i)
 			want := wants.At(i)
-			assert.Equal(t, want.Name(), actual.Name())
-			assert.Equal(t, want.Unit(), actual.Unit())
-			assert.Equal(t, getDataValue(&want), getDataValue(&actual))
+			assert.Equal(t, want.Name(), actual.Name(), testCaseName)
+			assert.Equal(t, want.Unit(), actual.Unit(), testCaseName)
+			assert.Equal(t, getDataValue(&want), getDataValue(&actual), testCaseName)
 			actualAttrs := getAttributesFromMetric(&actual)
 			wantAttrs := getAttributesFromMetric(&want)
-			assert.Equal(t, wantAttrs.Len(), actualAttrs.Len())
+			assert.Equal(t, wantAttrs.Len(), actualAttrs.Len(), testCaseName)
 			wantAttrs.Range(func(k string, v pcommon.Value) bool {
 				av, ok := actualAttrs.Get(k)
-				assert.True(t, ok)
-				assert.Equal(t, v, av)
+				assert.True(t, ok, testCaseName)
+				assert.Equal(t, v, av, testCaseName)
 				return true
 			})
 		}
