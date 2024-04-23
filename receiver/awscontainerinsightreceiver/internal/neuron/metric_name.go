@@ -10,7 +10,7 @@ const (
 	NeuronCoreMemoryUtilizationSharedScratchpad = "neuroncore_memory_usage_model_shared_scratchpad"
 	NeuronCoreMemoryUtilizationRuntimeMemory    = "neuroncore_memory_usage_runtime_memory"
 	NeuronCoreMemoryUtilizationTensors          = "neuroncore_memory_usage_tensors"
-	NeuronDeviceHardwareEccEvents               = "neurondevice_hw_ecc_events_total"
+	NeuronDeviceHardwareEccEvents               = "hardware_ecc_events_total"
 	NeuronExecutionStatus                       = "execution_status_total"
 	NeuronExecutionErrors                       = "execution_errors_total"
 	NeuronRuntimeMemoryUsage                    = "neuron_runtime_memory_used_bytes"
