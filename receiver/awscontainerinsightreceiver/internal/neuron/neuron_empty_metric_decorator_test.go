@@ -279,6 +279,23 @@ func TestConsumeMetricsForNeuronEmptyMetricsDecorator(t *testing.T) {
 						"runtime_tag":                 "default",
 					},
 				},
+
+				{Name: NeuronDeviceHardwareEccEvents, MetricType: pmetric.MetricTypeGauge, DataValue: 0}: {
+					{
+						neuronCorePerDeviceKey:        "2",
+						neuronDeviceCountAttributeKey: "2",
+						neuronDeviceAttributeKey:      "0",
+						eventType:                     "mem_ecc_corrected",
+						"runtime_tag":                 "default",
+					},
+					{
+						neuronCorePerDeviceKey:        "2",
+						neuronDeviceCountAttributeKey: "2",
+						neuronDeviceAttributeKey:      "1",
+						eventType:                     "mem_ecc_corrected",
+						"runtime_tag":                 "default",
+					},
+				},
 			}),
 			ShouldError: false,
 		},
@@ -521,6 +538,23 @@ func TestConsumeMetricsForNeuronEmptyMetricsDecorator(t *testing.T) {
 						neuronDeviceCountAttributeKey: "2",
 						neuronCoreAttributeKey:        "3",
 						neuronDeviceAttributeKey:      "1",
+						"runtime_tag":                 "default",
+					},
+				},
+
+				{Name: NeuronDeviceHardwareEccEvents, MetricType: pmetric.MetricTypeGauge, DataValue: 0}: {
+					{
+						neuronCorePerDeviceKey:        "2",
+						neuronDeviceCountAttributeKey: "2",
+						neuronDeviceAttributeKey:      "0",
+						eventType:                     "mem_ecc_corrected",
+						"runtime_tag":                 "default",
+					},
+					{
+						neuronCorePerDeviceKey:        "2",
+						neuronDeviceCountAttributeKey: "2",
+						neuronDeviceAttributeKey:      "1",
+						eventType:                     "mem_ecc_corrected",
 						"runtime_tag":                 "default",
 					},
 				},
